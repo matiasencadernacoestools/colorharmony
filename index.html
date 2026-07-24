@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.png">
 <link rel="apple-touch-icon" href="icone.png">
-<title>Color Harmony v11 — Laboratório de Presets de Cores</title>
+<title>Color Harmony v12 — Laboratório de Presets de Cores</title>
 <style>
 :root{--bg:#f5f6fa;--card:#fff;--text:#141824;--muted:#596275;--border:#d8deea;--accent:#d4a017;--shadow:0 18px 45px rgba(20,24,36,.08)}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text)}
@@ -122,13 +122,54 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 
 .version-badge{display:inline-flex;align-items:center;justify-content:center;margin:10px auto 0;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--muted);font-size:.78rem;font-weight:900}
 .match-origin{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;margin:0 0 14px;padding:12px;border:1px solid var(--border);border-radius:16px;background:#fbfcff}
-.match-origin-thumb{width:92px;height:92px;object-fit:cover;border-radius:14px;border:3px solid var(--accent);background:#eef1f7}
+.match-origin-thumb{width:120px;height:120px;object-fit:contain;border-radius:14px;border:3px solid var(--accent);background:#eef1f7;padding:4px}
 .match-origin-meta{display:grid;gap:4px}
 .match-origin-meta strong{font-size:.95rem}
 .match-origin-meta span{color:var(--muted);font-size:.84rem;word-break:break-word}
 @media(max-width:560px){
-  .match-origin{grid-template-columns:72px 1fr}
-  .match-origin-thumb{width:72px;height:72px}
+  .match-origin{grid-template-columns:94px 1fr}
+  .match-origin-thumb{width:94px;height:94px}
+}
+
+
+.match-palette-color.is-match{
+  position:relative;
+  outline:6px solid #fff;
+  outline-offset:-10px;
+  box-shadow:inset 0 0 0 4px var(--accent);
+}
+.match-palette-color.is-match::after{
+  content:'MATCH';
+  position:absolute;
+  left:50%;
+  bottom:14px;
+  transform:translateX(-50%);
+  padding:7px 10px;
+  border-radius:999px;
+  background:#141824;
+  color:#fff;
+  font-size:.72rem;
+  font-weight:900;
+  letter-spacing:.04em;
+  white-space:nowrap;
+}
+.color-card.match-card{
+  border:2px solid var(--accent);
+  background:#fffaf0;
+  box-shadow:0 0 0 3px rgba(212,160,23,.14);
+}
+.match-indicator{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-left:6px;
+  padding:3px 7px;
+  border-radius:999px;
+  background:#141824;
+  color:#fff;
+  font-size:.68rem;
+  font-weight:900;
+  vertical-align:middle;
 }
 
 </style>
@@ -139,7 +180,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <img class="brand-logo" src="LOGO_HC.png" alt="Color Harmony" decoding="async" fetchpriority="high">
 <h1>Laboratório de Presets de Cores</h1>
 <p class="subtitle">Carregue várias imagens, navegue entre elas e extraia automaticamente uma paleta de 8 cores predominantes, com HEX copiável e download em PNG.</p>
-<div class="version-badge" id="appVersion">Versão 11</div>
+<div class="version-badge" id="appVersion">Versão 12</div>
 </header>
 <main>
 <section class="card controls">
@@ -981,13 +1022,59 @@ function renderMatchThumbs(){
 }
 
 function renderMatchPalette(palette,matchedHex){
-  matchPaletteStrip.innerHTML='';matchColorList.innerHTML='';
-  palette.slice(0,8).forEach((color,index)=>{
-    const swatch=document.createElement('div');swatch.className='match-palette-color';swatch.style.background=color.hex;swatch.title=color.hex;
-    if(color.hex===matchedHex){swatch.style.outline='5px solid #fff';swatch.style.outlineOffset='-8px';}
+  matchPaletteStrip.innerHTML='';
+  matchColorList.innerHTML='';
+
+  const matchedRgb=hexToRgb(matchedHex);
+
+  // Localiza novamente a cor mais próxima e garante que ela apareça
+  // entre as oito cores exibidas, mesmo que estivesse na posição 9–12.
+  const ordered=[...palette];
+  let matchedIndex=0;
+  let bestDistance=Infinity;
+
+  ordered.forEach((color,index)=>{
+    const distance=rgbDistanceSquared(color,matchedRgb);
+    if(distance<bestDistance){
+      bestDistance=distance;
+      matchedIndex=index;
+    }
+  });
+
+  const matchedColor=ordered[matchedIndex];
+  const visible=ordered.slice(0,8);
+
+  if(matchedIndex>=8&&matchedColor){
+    visible[7]=matchedColor;
+  }
+
+  visible.forEach((color,index)=>{
+    const isMatch=color===matchedColor||rgbDistanceSquared(color,matchedRgb)<80;
+
+    const swatch=document.createElement('div');
+    swatch.className='match-palette-color'+(isMatch?' is-match':'');
+    swatch.style.background=color.hex;
+    swatch.title=isMatch
+      ?`${color.hex} — cor correspondente`
+      :color.hex;
     matchPaletteStrip.appendChild(swatch);
-    const card=document.createElement('div');card.className='color-card';
-    card.innerHTML=`<span class="color-dot" style="background:${color.hex}"></span><span><span class="color-name">Cor ${index+1}${color.hex===matchedHex?' • MATCH':''}</span><br><span class="color-meta">${color.hex} • RGB ${color.r}, ${color.g}, ${color.b}</span></span><button class="btn" data-copy="${color.hex}">Copiar</button>`;
+
+    const card=document.createElement('div');
+    card.className='color-card'+(isMatch?' match-card':'');
+
+    card.innerHTML=`
+      <span class="color-dot" style="background:${color.hex}"></span>
+      <span>
+        <span class="color-name">
+          Cor ${index+1}
+          ${isMatch?'<span class="match-indicator">MATCH</span>':''}
+        </span>
+        <br>
+        <span class="color-meta">${color.hex} • RGB ${color.r}, ${color.g}, ${color.b}</span>
+      </span>
+      <button class="btn" data-copy="${color.hex}">Copiar</button>
+    `;
+
     matchColorList.appendChild(card);
   });
 }
