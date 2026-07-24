@@ -83,6 +83,29 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 .palette-badge::before{content:'✦'}
 @media(max-width:560px){.suggested-strip{grid-template-columns:repeat(5,minmax(70px,1fr));overflow:auto}.suggested-color{min-width:70px}}
 
+
+.match-tab[disabled]{opacity:.45;cursor:not-allowed}
+.match-tab.alert{animation:matchPulse 1s ease-in-out infinite}
+@keyframes matchPulse{0%,100%{box-shadow:0 0 0 0 rgba(212,160,23,.15);background:#fff7db}50%{box-shadow:0 0 0 8px rgba(212,160,23,.18);background:#ffe99b}}
+.extracted-color-tool{display:grid;grid-template-columns:1fr;gap:12px;margin:14px 0;padding:14px;border:1px solid var(--border);border-radius:16px;background:#fbfcff}
+@media(min-width:700px){.extracted-color-tool{grid-template-columns:auto 1fr;align-items:center}}
+.match-summary{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:12px}
+.match-selected{display:inline-flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:14px;background:#fff;font-weight:900}
+.match-selected-dot{width:34px;height:34px;border-radius:10px;border:1px solid rgba(0,0,0,.12)}
+.match-layout{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:900px){.match-layout{grid-template-columns:.9fr 1.1fr}}
+.match-viewer,.match-palette{display:grid;gap:12px}
+.match-image-wrap{min-height:320px;border:1px solid var(--border);border-radius:18px;background:#eef1f7;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#matchCanvas{max-width:100%;max-height:560px;display:block}
+.match-thumbs{display:flex;gap:8px;overflow:auto;padding:6px 2px 4px}
+.match-thumb{width:66px;height:66px;flex:0 0 auto;object-fit:cover;border-radius:12px;border:3px solid transparent;cursor:pointer}
+.match-thumb.active{border-color:var(--accent)}
+.match-empty{padding:30px 18px;border:1px dashed var(--border);border-radius:16px;text-align:center;color:var(--muted)}
+.match-score{font-size:.82rem;color:var(--muted);font-weight:800}
+.match-palette-strip{display:grid;grid-template-columns:repeat(8,1fr);min-height:240px;border:1px solid var(--border);border-radius:18px;overflow:hidden}
+.match-palette-color{min-height:240px}
+.match-color-list{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:700px){.match-color-list{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -113,11 +136,22 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
   <div class="tabs" role="tablist" aria-label="Paletas">
     <button class="tab-btn active" id="extractedTabBtn" type="button" role="tab" aria-selected="true" aria-controls="extractedPanel">Paleta extraída</button>
     <button class="tab-btn" id="suggestedTabBtn" type="button" role="tab" aria-selected="false" aria-controls="suggestedPanel">Paletas sugeridas</button>
+    <button class="tab-btn match-tab" id="matchTabBtn" type="button" role="tab" aria-selected="false" aria-controls="matchPanel" disabled>Match</button>
   </div>
 
   <section class="tab-panel" id="extractedPanel" role="tabpanel" aria-labelledby="extractedTabBtn">
     <h2 style="margin:0">Paleta extraída</h2>
     <div id="analysisText" class="small">Aguardando imagem.</div>
+    <div class="extracted-color-tool">
+      <label class="color-picker-field">
+        Seletor de cor
+        <span class="color-picker-wrap">
+          <input id="baseColorPicker" type="color" value="#D4A017" aria-label="Selecionar cor base para Match e harmonias">
+          <span id="baseColorHex">#D4A017</span>
+        </span>
+      </label>
+      <div class="small">Escolha uma cor para procurar imagens PRESETS com pelo menos 95% de similaridade cromática. O mesmo seletor continua alimentando as paletas sugeridas.</div>
+    </div>
     <div class="palette-strip" id="paletteStrip"></div>
     <div class="color-list" id="colorList"></div>
     <div class="extracted-actions">
@@ -127,29 +161,37 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 
   <section class="tab-panel" id="suggestedPanel" role="tabpanel" aria-labelledby="suggestedTabBtn" hidden>
     <h2 style="margin:0">Paletas sugeridas</h2>
-    <p class="small">Selecione uma cor base para gerar combinações tecnicamente coerentes.</p>
+    <p class="small">Selecione uma cor base na aba Paleta extraída para gerar combinações tecnicamente coerentes.</p>
+    <div class="actions"><button class="btn" id="generateSuggestionsBtn" type="button">Gerar paletas</button></div>
 
-    <div class="suggested-controls">
-      <label class="color-picker-field">
-        Seletor de cor
-        <span class="color-picker-wrap">
-          <input id="baseColorPicker" type="color" value="#D4A017" aria-label="Selecionar cor base">
-          <span id="baseColorHex">#D4A017</span>
-        </span>
-      </label>
-
-      <div class="small">
-        As sugestões distinguem cores cromáticas de tons neutros e aplicam harmonias específicas para moda, incluindo monocromática, análoga, complementar, triádica e composição 60-30-10.
-      </div>
-
-      <button class="btn" id="generateSuggestionsBtn" type="button">Gerar paletas</button>
-    </div>
 
     <div id="suggestedEmpty" class="suggested-empty">
       Use o seletor de cores para gerarmos uma paleta de cores.
     </div>
 
     <div id="suggestedPalettes" class="suggested-palettes" hidden></div>
+  </section>
+
+  <section class="tab-panel" id="matchPanel" role="tabpanel" aria-labelledby="matchTabBtn" hidden>
+    <h2 style="margin:0">Match</h2>
+    <div class="match-summary">
+      <span class="match-selected"><span id="matchSelectedDot" class="match-selected-dot"></span>Cor selecionada: <strong id="matchSelectedHex">—</strong></span>
+      <span id="matchCount" class="small">Nenhuma correspondência analisada.</span>
+    </div>
+    <div id="matchEmpty" class="match-empty">Selecione uma cor na aba Paleta extraída. A aba Match será ativada quando alguma imagem PRESET atingir pelo menos 95% de similaridade.</div>
+    <div id="matchContent" class="match-layout" hidden>
+      <div class="match-viewer">
+        <div class="nav"><button class="btn" id="matchPrevBtn" type="button">◀ Anterior</button><strong id="matchCounter">Imagem 0 de 0</strong><button class="btn" id="matchNextBtn" type="button">Próxima ▶</button></div>
+        <div class="match-image-wrap"><canvas id="matchCanvas"></canvas></div>
+        <div id="matchScore" class="match-score"></div>
+        <div id="matchThumbs" class="match-thumbs"></div>
+      </div>
+      <div class="match-palette">
+        <h3 style="margin:0">Paleta da imagem correspondente</h3>
+        <div id="matchPaletteStrip" class="match-palette-strip"></div>
+        <div id="matchColorList" class="match-color-list"></div>
+      </div>
+    </div>
   </section>
 </div>
 
@@ -178,6 +220,10 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <script>
 const input=document.getElementById('imageInput'),fileStatus=document.getElementById('fileStatus'),canvas=document.getElementById('previewCanvas'),ctx=canvas.getContext('2d',{willReadFrequently:true}),imageWrap=document.getElementById('imageWrap'),thumbs=document.getElementById('thumbs'),counter=document.getElementById('counter'),prevBtn=document.getElementById('prevBtn'),nextBtn=document.getElementById('nextBtn'),paletteStrip=document.getElementById('paletteStrip'),colorList=document.getElementById('colorList'),analysisText=document.getElementById('analysisText'),copyAllBtn=document.getElementById('copyAllBtn'),downloadBtn=document.getElementById('downloadBtn'),modeSelect=document.getElementById('modeSelect'),progressBar=document.getElementById('progressBar'),presetStatus=document.getElementById('presetStatus'),copyToast=document.getElementById('copyToast'),installBtn=document.getElementById('installBtn'),installModal=document.getElementById('installModal'),installHelp=document.getElementById('installHelp'),closeInstallBtn=document.getElementById('closeInstallBtn'),confirmInstallBtn=document.getElementById('confirmInstallBtn'),extractedTabBtn=document.getElementById('extractedTabBtn'),suggestedTabBtn=document.getElementById('suggestedTabBtn'),extractedPanel=document.getElementById('extractedPanel'),suggestedPanel=document.getElementById('suggestedPanel'),baseColorPicker=document.getElementById('baseColorPicker'),baseColorHex=document.getElementById('baseColorHex'),generateSuggestionsBtn=document.getElementById('generateSuggestionsBtn'),suggestedEmpty=document.getElementById('suggestedEmpty'),suggestedPalettes=document.getElementById('suggestedPalettes'),saveExtractedPaletteBtn=document.getElementById('saveExtractedPaletteBtn');
 let images=[],currentIndex=0,currentPalette=[];
+const matchTabBtn=document.getElementById('matchTabBtn'),matchPanel=document.getElementById('matchPanel'),matchSelectedDot=document.getElementById('matchSelectedDot'),matchSelectedHex=document.getElementById('matchSelectedHex'),matchCount=document.getElementById('matchCount'),matchEmpty=document.getElementById('matchEmpty'),matchContent=document.getElementById('matchContent'),matchPrevBtn=document.getElementById('matchPrevBtn'),matchNextBtn=document.getElementById('matchNextBtn'),matchCounter=document.getElementById('matchCounter'),matchCanvas=document.getElementById('matchCanvas'),matchCtx=matchCanvas.getContext('2d',{willReadFrequently:true}),matchScore=document.getElementById('matchScore'),matchThumbs=document.getElementById('matchThumbs'),matchPaletteStrip=document.getElementById('matchPaletteStrip'),matchColorList=document.getElementById('matchColorList');
+let matchResults=[],matchIndex=0,matchSearchTimer=null;
+const presetColorCache=new Map(),MATCH_THRESHOLD=.95;
+
 
 /*
   CONFIGURAÇÃO DOS PRESETS
@@ -702,26 +748,180 @@ function showCopyToast(){
 
 
 function activatePaletteTab(tab){
-  const showExtracted=tab==='extracted';
+  const showExtracted=tab==='extracted',showSuggested=tab==='suggested',showMatch=tab==='match';
   extractedTabBtn.classList.toggle('active',showExtracted);
-  suggestedTabBtn.classList.toggle('active',!showExtracted);
+  suggestedTabBtn.classList.toggle('active',showSuggested);
+  matchTabBtn.classList.toggle('active',showMatch);
   extractedTabBtn.setAttribute('aria-selected',String(showExtracted));
-  suggestedTabBtn.setAttribute('aria-selected',String(!showExtracted));
+  suggestedTabBtn.setAttribute('aria-selected',String(showSuggested));
+  matchTabBtn.setAttribute('aria-selected',String(showMatch));
   extractedPanel.hidden=!showExtracted;
-  suggestedPanel.hidden=showExtracted;
+  suggestedPanel.hidden=!showSuggested;
+  matchPanel.hidden=!showMatch;
+  if(showMatch){matchTabBtn.classList.remove('alert');renderCurrentMatch();}
 }
-
 extractedTabBtn.addEventListener('click',()=>activatePaletteTab('extracted'));
 suggestedTabBtn.addEventListener('click',()=>activatePaletteTab('suggested'));
+matchTabBtn.addEventListener('click',()=>{if(!matchTabBtn.disabled)activatePaletteTab('match');});
 
 baseColorPicker.addEventListener('input',()=>{
-  baseColorHex.textContent=baseColorPicker.value.toUpperCase();
+  const hex=baseColorPicker.value.toUpperCase();
+  baseColorHex.textContent=hex;
+  matchSelectedHex.textContent=hex;
+  matchSelectedDot.style.background=hex;
+  clearTimeout(matchSearchTimer);
+  matchSearchTimer=setTimeout(()=>searchPresetMatches(hex),320);
 });
-
-baseColorPicker.addEventListener('change',generateSuggestedPalettes);
+baseColorPicker.addEventListener('change',()=>searchPresetMatches(baseColorPicker.value.toUpperCase()));
 generateSuggestionsBtn.addEventListener('click',generateSuggestedPalettes);
 
 
+
+
+matchPrevBtn.addEventListener('click',async()=>{if(!matchResults.length)return;matchIndex=(matchIndex-1+matchResults.length)%matchResults.length;await renderCurrentMatch();});
+matchNextBtn.addEventListener('click',async()=>{if(!matchResults.length)return;matchIndex=(matchIndex+1)%matchResults.length;await renderCurrentMatch();});
+
+async function searchPresetMatches(selectedHex){
+  const presets=images.filter(image=>image.source==='github');
+  matchSelectedHex.textContent=selectedHex;
+  matchSelectedDot.style.background=selectedHex;
+  matchTabBtn.classList.remove('alert');
+  matchTabBtn.disabled=true;
+  matchResults=[];
+  matchIndex=0;
+
+  if(!presets.length){matchCount.textContent='Nenhum preset disponível para análise.';matchEmpty.hidden=false;matchContent.hidden=true;return;}
+
+  matchCount.textContent=`Analisando ${presets.length} preset(s)...`;
+  matchEmpty.textContent='A procurar correspondências cromáticas...';
+  matchEmpty.hidden=false;
+  matchContent.hidden=true;
+
+  const selected=hexToRgb(selectedHex),results=[];
+  for(const preset of presets){
+    try{
+      const palette=await getPresetDominantPalette(preset);
+      let best=null;
+      for(const color of palette){
+        const similarity=colorSimilarity(selected,color);
+        if(!best||similarity>best.similarity)best={color,similarity};
+      }
+      if(best&&best.similarity>=MATCH_THRESHOLD)results.push({image:preset,palette,matchedColor:best.color,similarity:best.similarity});
+    }catch(error){console.warn('Falha ao analisar preset:',preset.name,error);}
+  }
+
+  results.sort((a,b)=>b.similarity-a.similarity);
+  matchResults=results;
+
+  if(results.length){
+    matchTabBtn.disabled=false;
+    matchTabBtn.classList.add('alert');
+    matchCount.textContent=`${results.length} imagem(ns) encontrada(s) com similaridade mínima de 95%.`;
+    matchEmpty.hidden=true;
+    matchContent.hidden=false;
+    await renderCurrentMatch();
+  }else{
+    matchCount.textContent='Nenhuma imagem PRESET atingiu 95% de similaridade.';
+    matchEmpty.textContent='Nenhuma correspondência válida foi encontrada para a cor selecionada.';
+    matchEmpty.hidden=false;
+    matchContent.hidden=true;
+  }
+}
+
+async function getPresetDominantPalette(preset){
+  if(presetColorCache.has(preset.url))return presetColorCache.get(preset.url);
+  const palette=await analyzeImageColors(preset.url,12);
+  presetColorCache.set(preset.url,palette);
+  return palette;
+}
+
+function analyzeImageColors(url,count=12){
+  return new Promise((resolve,reject)=>{
+    const image=new Image();
+    image.crossOrigin='anonymous';
+    image.onload=()=>{
+      const maxSide=420,ratio=Math.min(maxSide/image.width,maxSide/image.height,1);
+      const temp=document.createElement('canvas');
+      temp.width=Math.max(1,Math.round(image.width*ratio));
+      temp.height=Math.max(1,Math.round(image.height*ratio));
+      const tempCtx=temp.getContext('2d',{willReadFrequently:true});
+      tempCtx.drawImage(image,0,0,temp.width,temp.height);
+      const data=tempCtx.getImageData(0,0,temp.width,temp.height).data,bins=new Map();
+      const step=Math.max(1,Math.floor((temp.width*temp.height)/50000)),q=12;
+      for(let i=0;i<data.length;i+=4*step){
+        if(data[i+3]<200)continue;
+        const r=data[i],g=data[i+1],b=data[i+2],[h,s,l]=rgbToHsl(r,g,b);
+        if(l<3||l>98)continue;
+        const qr=Math.min(255,Math.round(r/q)*q),qg=Math.min(255,Math.round(g/q)*q),qb=Math.min(255,Math.round(b/q)*q),key=`${qr},${qg},${qb}`;
+        const bin=bins.get(key)||{r:0,g:0,b:0,count:0};
+        bin.r+=r;bin.g+=g;bin.b+=b;bin.count++;bins.set(key,bin);
+      }
+      const colors=[...bins.values()].map(bin=>{
+        const r=Math.round(bin.r/bin.count),g=Math.round(bin.g/bin.count),b=Math.round(bin.b/bin.count),hsl=rgbToHslObj(r,g,b);
+        return{r,g,b,...hsl,count:bin.count,score:bin.count*(1+Math.min(hsl.s,90)/100*.28),hex:rgbToHex(r,g,b)};
+      }).sort((a,b)=>b.score-a.score);
+      const distinct=[];
+      for(const color of colors){
+        if(distinct.every(existing=>rgbDistanceSquared(existing,color)>750))distinct.push(color);
+        if(distinct.length>=count)break;
+      }
+      resolve(distinct);
+    };
+    image.onerror=()=>reject(new Error('Imagem não carregada'));
+    image.src=url;
+  });
+}
+
+function colorSimilarity(a,b){
+  const dr=a.r-b.r,dg=a.g-b.g,db=a.b-b.b;
+  const weighted=Math.sqrt(2*dr*dr+4*dg*dg+3*db*db),maximum=Math.sqrt(9*255*255);
+  return Math.max(0,1-weighted/maximum);
+}
+
+async function renderCurrentMatch(){
+  if(!matchResults.length)return;
+  const result=matchResults[matchIndex];
+  matchCounter.textContent=`Imagem ${matchIndex+1} de ${matchResults.length}`;
+  matchScore.textContent=`${result.image.name} • Similaridade: ${(result.similarity*100).toFixed(1)}% • Cor encontrada: ${result.matchedColor.hex}`;
+  await drawMatchImage(result.image.url);
+  renderMatchThumbs();
+  renderMatchPalette(result.palette,result.matchedColor.hex);
+}
+
+function drawMatchImage(url){
+  return new Promise((resolve,reject)=>{
+    const image=new Image();image.crossOrigin='anonymous';
+    image.onload=()=>{
+      const maxSide=820,ratio=Math.min(maxSide/image.width,maxSide/image.height,1);
+      matchCanvas.width=Math.max(1,Math.round(image.width*ratio));matchCanvas.height=Math.max(1,Math.round(image.height*ratio));
+      matchCtx.clearRect(0,0,matchCanvas.width,matchCanvas.height);matchCtx.drawImage(image,0,0,matchCanvas.width,matchCanvas.height);resolve();
+    };
+    image.onerror=reject;image.src=url;
+  });
+}
+
+function renderMatchThumbs(){
+  matchThumbs.innerHTML='';
+  matchResults.forEach((result,index)=>{
+    const image=document.createElement('img');
+    image.className='match-thumb'+(index===matchIndex?' active':'');image.src=result.image.url;image.alt=result.image.name;image.loading='lazy';
+    image.title=`${result.image.name} • ${(result.similarity*100).toFixed(1)}%`;
+    image.addEventListener('click',async()=>{matchIndex=index;await renderCurrentMatch();});
+    matchThumbs.appendChild(image);
+  });
+}
+
+function renderMatchPalette(palette,matchedHex){
+  matchPaletteStrip.innerHTML='';matchColorList.innerHTML='';
+  palette.slice(0,8).forEach((color,index)=>{
+    const swatch=document.createElement('div');swatch.className='match-palette-color';swatch.style.background=color.hex;swatch.title=color.hex;
+    if(color.hex===matchedHex){swatch.style.outline='5px solid #fff';swatch.style.outlineOffset='-8px';}
+    matchPaletteStrip.appendChild(swatch);
+    const card=document.createElement('div');card.className='color-card';
+    card.innerHTML=`<span class="color-dot" style="background:${color.hex}"></span><span><span class="color-name">Cor ${index+1}${color.hex===matchedHex?' • MATCH':''}</span><br><span class="color-meta">${color.hex} • RGB ${color.r}, ${color.g}, ${color.b}</span></span><button class="btn" data-copy="${color.hex}">Copiar</button>`;
+    matchColorList.appendChild(card);
+  });
+}
 
 saveExtractedPaletteBtn.addEventListener('click',downloadExtractedPalette);
 
