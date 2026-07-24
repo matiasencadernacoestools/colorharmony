@@ -1,1 +1,627 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#d4a017">
+<meta name="description" content="Laboratório para extração de paletas de cores predominantes.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icone.png">
+<link rel="apple-touch-icon" href="icone.png">
+<title>Laboratório de Presets de Cores</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--text:#141824;--muted:#596275;--border:#d8deea;--accent:#d4a017;--shadow:0 18px 45px rgba(20,24,36,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text)}
+header{max-width:1180px;margin:0 auto;padding:20px 18px 10px;text-align:center;position:relative}
+.brand-logo{display:block;width:min(360px,72vw);max-height:125px;object-fit:contain;margin:0 auto 12px}
+h1{margin:0;font-size:clamp(1.8rem,4vw,3.25rem);line-height:1.05}
+.install-btn{position:absolute;top:18px;right:18px}
+.subtitle{margin:12px auto 0;max-width:760px;color:var(--muted)}
+main{max-width:1180px;margin:0 auto;padding:18px}.card{background:var(--card);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow);padding:18px}
+.controls{display:grid;grid-template-columns:1fr;gap:14px}@media(min-width:850px){.controls{grid-template-columns:1.2fr .8fr}}
+.upload-box{border:2px dashed var(--border);border-radius:18px;padding:18px;background:#fbfcff}.upload-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+input[type=file]{display:none}.file-btn,.btn,select{border:1px solid var(--border);background:#fff;color:var(--text);border-radius:14px;padding:12px 16px;font-weight:800;cursor:pointer}.file-btn{background:#fff7db;border-color:#e6c65a}.status{font-weight:700;color:var(--muted)}
+.options{display:grid;gap:10px}.options label{display:grid;gap:6px;font-weight:800}select{width:100%}.workspace{display:grid;grid-template-columns:1fr;gap:18px;margin-top:18px}@media(min-width:980px){.workspace{grid-template-columns:.9fr 1.1fr}}
+.viewer{display:grid;gap:14px}.nav{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}.image-wrap{min-height:320px;background:#eef1f7;border:1px solid var(--border);border-radius:18px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#previewCanvas{max-width:100%;max-height:620px;display:block}.empty{color:var(--muted);text-align:center;padding:40px 16px}.thumbs{display:flex;gap:8px;overflow:auto;padding:8px 2px 4px}
+.thumb-item{position:relative;width:66px;height:66px;flex:0 0 auto}
+.thumb{width:66px;height:66px;display:block;border-radius:12px;border:3px solid transparent;object-fit:cover;cursor:pointer;background:#eee}
+.thumb.active{border-color:var(--accent)}
+.thumb-remove{position:absolute;top:-7px;right:-7px;width:23px;height:23px;border:2px solid #fff;border-radius:50%;background:#141824;color:#fff;font-size:14px;font-weight:900;line-height:17px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.24);z-index:2}
+.thumb-remove:hover{background:#b42318}
+.thumb-remove:focus-visible{outline:3px solid rgba(212,160,23,.35);outline-offset:2px}
+.palette-panel{display:grid;gap:14px}.palette-strip{display:grid;grid-template-columns:repeat(8,1fr);min-height:300px;overflow:hidden;border-radius:18px;border:1px solid var(--border)}
+@media(max-width:760px){.palette-strip{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:440px){.palette-strip{grid-template-columns:repeat(2,1fr)}}
+.swatch{position:relative;min-height:250px;border-right:2px solid rgba(255,255,255,.75)}
+.empty-swatch{background:#fff!important;background-image:linear-gradient(45deg,#f1f3f7 25%,transparent 25%,transparent 75%,#f1f3f7 75%),linear-gradient(45deg,#f1f3f7 25%,transparent 25%,transparent 75%,#f1f3f7 75%);background-size:22px 22px;background-position:0 0,11px 11px}.swatch:last-child{border-right:0}.hex-pill{position:absolute;left:12px;bottom:12px;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.82);color:#101522;border-radius:999px;padding:9px 12px;font-weight:900;box-shadow:0 6px 18px rgba(0,0,0,.12)}.copy-mini{border:0;background:#fff;border-radius:999px;width:28px;height:28px;cursor:pointer;font-weight:900}
+.color-list{display:grid;grid-template-columns:1fr;gap:10px}.empty-card{opacity:.72}.empty-dot{background:#fff;border:1px dashed var(--border)}@media(min-width:700px){.color-list{grid-template-columns:repeat(2,1fr)}}.color-card{display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center;border:1px solid var(--border);border-radius:16px;padding:12px;background:#fff}.color-dot{width:34px;height:34px;border-radius:10px;border:1px solid rgba(0,0,0,.1)}.color-name{font-weight:900}.color-meta{color:var(--muted);font-size:.9rem}.actions{display:flex;flex-wrap:wrap;gap:10px}.small{font-size:.88rem;color:var(--muted)}.progress{height:10px;background:#eef1f7;border-radius:999px;overflow:hidden}.progress>span{display:block;height:100%;width:0;background:var(--accent);transition:width .2s ease}
 
+.preset-status{margin:10px 0 0;font-weight:800;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);background:#141824;color:#fff;padding:11px 16px;border-radius:999px;font-weight:800;box-shadow:0 12px 28px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:.22s ease;z-index:1000}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,24,36,.55);display:grid;place-items:center;padding:18px;z-index:999}
+.modal-backdrop[hidden]{display:none}
+.install-modal{width:min(520px,100%);background:#fff;border-radius:22px;border:1px solid var(--border);box-shadow:0 24px 70px rgba(0,0,0,.28);padding:22px;text-align:left}
+.install-modal h2{margin:0 0 8px}
+.install-options{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}
+.install-option{min-height:72px}
+.install-help{padding:12px 14px;border-radius:14px;background:#f5f6fa;color:var(--muted);line-height:1.45}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:center;color:var(--muted);font-weight:700}
+@media(max-width:700px){
+  header{padding-top:72px}
+  .install-btn{top:16px;right:16px}
+  .install-options{grid-template-columns:1fr}
+}
+
+</style>
+</head>
+<body>
+<header>
+<button class="btn install-btn" id="installBtn" type="button">Instalar</button>
+<img class="brand-logo" src="LOGO_HC.png" alt="Color Harmony" decoding="async" fetchpriority="high">
+<h1>Laboratório de Presets de Cores</h1>
+<p class="subtitle">Carregue várias imagens, navegue entre elas e extraia automaticamente uma paleta de 8 cores predominantes, com HEX copiável e download em PNG.</p>
+</header>
+<main>
+<section class="card controls">
+<div class="upload-box">
+<div class="upload-row">
+<label class="file-btn" for="imageInput">Escolher imagens</label>
+<input id="imageInput" type="file" accept="image/*" multiple>
+<span id="fileStatus" class="status">0 imagem(ns) carregada(s)</span>
+</div>
+<p id="presetStatus" class="preset-status">Carregando presets...</p>
+<p class="small">Aceita JPG, PNG, WEBP e outros formatos de imagem. As imagens escolhidas são adicionadas aos presets e podem ser removidas pelo X.</p>
+<div class="progress"><span id="progressBar"></span></div>
+</div>
+<div class="options"><label>Modo de extração<select id="modeSelect"><option value="dominant">Cores predominantes</option><option value="balanced">Equilibrada</option><option value="artistic">Artística</option></select></label><div class="actions"><button class="btn" id="copyAllBtn">Copiar todos os HEX</button><button class="btn" id="downloadBtn">Baixar PNG da paleta</button></div><p class="small">Predominantes prioriza frequência. Equilibrada reduz cores parecidas. Artística busca contraste entre quente, frio, claro e escuro.</p></div>
+</section>
+<section class="workspace">
+<div class="card viewer"><div class="nav"><button class="btn" id="prevBtn">◀ Anterior</button><strong id="counter">Imagem 0 de 0</strong><button class="btn" id="nextBtn">Próxima ▶</button></div><div class="image-wrap" id="imageWrap"><div class="empty">Carregue imagens para iniciar o teste.</div><canvas id="previewCanvas" hidden></canvas></div><div class="thumbs" id="thumbs"></div></div>
+<div class="card palette-panel"><h2 style="margin:0">Paleta extraída</h2><div id="analysisText" class="small">Aguardando imagem.</div><div class="palette-strip" id="paletteStrip"></div><div class="color-list" id="colorList"></div></div>
+</section>
+</main>
+<footer>Desenvolvido por Carlos M. Kill</footer>
+
+<div id="copyToast" class="toast" role="status" aria-live="polite">Código da cor copiado</div>
+
+<div id="installModal" class="modal-backdrop" hidden>
+  <section class="install-modal" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+    <h2 id="installTitle">Instalar Color Harmony</h2>
+    <p class="small">Selecione o sistema deste dispositivo.</p>
+    <div class="install-options">
+      <button class="btn install-option" type="button" data-platform="android">Android</button>
+      <button class="btn install-option" type="button" data-platform="ios">iOS</button>
+      <button class="btn install-option" type="button" data-platform="pc">PC</button>
+    </div>
+    <div id="installHelp" class="install-help">A instalação será orientada conforme a plataforma escolhida.</div>
+    <div class="modal-actions">
+      <button class="btn" id="closeInstallBtn" type="button">Fechar</button>
+      <button class="btn" id="confirmInstallBtn" type="button" disabled>Continuar</button>
+    </div>
+  </section>
+</div>
+<script>
+const input=document.getElementById('imageInput'),fileStatus=document.getElementById('fileStatus'),canvas=document.getElementById('previewCanvas'),ctx=canvas.getContext('2d',{willReadFrequently:true}),imageWrap=document.getElementById('imageWrap'),thumbs=document.getElementById('thumbs'),counter=document.getElementById('counter'),prevBtn=document.getElementById('prevBtn'),nextBtn=document.getElementById('nextBtn'),paletteStrip=document.getElementById('paletteStrip'),colorList=document.getElementById('colorList'),analysisText=document.getElementById('analysisText'),copyAllBtn=document.getElementById('copyAllBtn'),downloadBtn=document.getElementById('downloadBtn'),modeSelect=document.getElementById('modeSelect'),progressBar=document.getElementById('progressBar'),presetStatus=document.getElementById('presetStatus'),copyToast=document.getElementById('copyToast'),installBtn=document.getElementById('installBtn'),installModal=document.getElementById('installModal'),installHelp=document.getElementById('installHelp'),closeInstallBtn=document.getElementById('closeInstallBtn'),confirmInstallBtn=document.getElementById('confirmInstallBtn');
+let images=[],currentIndex=0,currentPalette=[];
+
+/*
+  CONFIGURAÇÃO DOS PRESETS
+  O navegador não consegue listar diretamente uma pasta estática.
+  Por isso usamos a API pública do GitHub para descobrir os arquivos.
+*/
+const PRESETS_CONFIG={
+  owner:'matiasencadernacoestools',
+  repo:'colorharmony',
+  branch:'main',
+  folder:'PRESETS'
+};
+
+const IMAGE_EXTENSIONS=/\.(avif|bmp|gif|jpe?g|png|webp)$/i;
+
+document.addEventListener('DOMContentLoaded',loadPresetImages);
+
+async function loadPresetImages(){
+  fileStatus.textContent='0 imagem(ns) carregada(s)';
+  presetStatus.textContent='Carregando presets...';
+  progressBar.style.width='35%';
+
+  try{
+    const {owner,repo,branch,folder}=PRESETS_CONFIG;
+    const apiUrl=`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(folder)}?ref=${encodeURIComponent(branch)}`;
+
+    const response=await fetch(apiUrl,{
+      headers:{Accept:'application/vnd.github+json'}
+    });
+
+    if(!response.ok){
+      throw new Error(`GitHub respondeu ${response.status}`);
+    }
+
+    const files=await response.json();
+
+    if(!Array.isArray(files)){
+      throw new Error('A resposta da pasta PRESETS não é uma lista.');
+    }
+
+    images=files
+      .filter(item=>item.type==='file'&&IMAGE_EXTENSIONS.test(item.name))
+      .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{numeric:true,sensitivity:'base'}))
+      .map(item=>({
+        name:item.name,
+        url:item.download_url,
+        source:'github'
+      }));
+
+    currentIndex=0;
+    updateImageStatus();
+    if(!images.length)presetStatus.textContent='Nenhuma imagem encontrada em PRESETS';
+
+    renderThumbs();
+
+    if(images.length){
+      await loadCurrentImage();
+    }else{
+      showEmptyState('A pasta PRESETS existe, mas não contém imagens compatíveis.');
+    }
+  }catch(error){
+    console.error('Falha ao carregar presets:',error);
+    presetStatus.textContent='Não foi possível carregar os presets automaticamente';
+    showEmptyState('Envie a pasta PRESETS ao GitHub ou use “Escolher imagens” como alternativa.');
+  }finally{
+    progressBar.style.width='100%';
+    setTimeout(()=>progressBar.style.width='0',350);
+  }
+}
+
+input.addEventListener('change',async e=>{
+  const files=[...e.target.files].filter(file=>file.type.startsWith('image/'));
+  if(!files.length)return;
+
+  const firstNewIndex=images.length;
+
+  const added=files.map(file=>({
+    id:`local-${Date.now()}-${crypto.randomUUID?.()||Math.random().toString(36).slice(2)}`,
+    file,
+    url:URL.createObjectURL(file),
+    name:file.name,
+    source:'local'
+  }));
+
+  images.push(...added);
+  currentIndex=firstNewIndex;
+  input.value='';
+
+  updateImageStatus();
+  renderThumbs();
+  await loadCurrentImage();
+});
+
+function updateImageStatus(){
+  const presetCount=images.filter(img=>img.source==='github').length;
+  const localCount=images.filter(img=>img.source==='local').length;
+
+  fileStatus.textContent=`${localCount} imagem(ns) carregada(s)`;
+  presetStatus.textContent=presetCount
+    ?`${presetCount} preset(s) disponível(is) no seletor`
+    :'Nenhum preset disponível';
+}
+
+async function removeLocalImage(index){
+  const image=images[index];
+  if(!image||image.source!=='local')return;
+
+  URL.revokeObjectURL(image.url);
+  images.splice(index,1);
+
+  if(!images.length){
+    currentIndex=0;
+    updateImageStatus();
+    showEmptyState('Nenhuma imagem disponível.');
+    return;
+  }
+
+  if(index<currentIndex){
+    currentIndex--;
+  }else if(index===currentIndex){
+    currentIndex=Math.min(currentIndex,images.length-1);
+  }
+
+  updateImageStatus();
+  renderThumbs();
+  await loadCurrentImage();
+}
+
+prevBtn.onclick=async()=>{
+  if(!images.length)return;
+  currentIndex=(currentIndex-1+images.length)%images.length;
+  await loadCurrentImage();
+};
+
+nextBtn.onclick=async()=>{
+  if(!images.length)return;
+  currentIndex=(currentIndex+1)%images.length;
+  await loadCurrentImage();
+};
+
+modeSelect.onchange=()=>extractFromCanvas();
+
+function showEmptyState(message){
+  canvas.hidden=true;
+  imageWrap.innerHTML=`<div class="empty">${message}</div>`;
+  counter.textContent='Imagem 0 de 0';
+  thumbs.innerHTML='';
+  paletteStrip.innerHTML='';
+  colorList.innerHTML='';
+  analysisText.textContent='Aguardando imagem.';
+}
+
+function renderThumbs(){
+  thumbs.innerHTML='';
+
+  images.forEach((img,i)=>{
+    const item=document.createElement('div');
+    item.className='thumb-item';
+
+    const t=document.createElement('img');
+    t.className='thumb'+(i===currentIndex?' active':'');
+    t.src=img.url;
+    t.alt=img.name;
+    t.title=img.source==='local'
+      ?`${img.name} — imagem adicionada pelo usuário`
+      :`${img.name} — preset`;
+    t.loading='lazy';
+    t.onclick=async()=>{
+      currentIndex=i;
+      await loadCurrentImage();
+    };
+
+    item.appendChild(t);
+
+    if(img.source==='local'){
+      const remove=document.createElement('button');
+      remove.type='button';
+      remove.className='thumb-remove';
+      remove.textContent='×';
+      remove.title=`Remover ${img.name}`;
+      remove.setAttribute('aria-label',`Remover ${img.name}`);
+      remove.onclick=async event=>{
+        event.stopPropagation();
+        await removeLocalImage(i);
+      };
+      item.appendChild(remove);
+    }
+
+    thumbs.appendChild(item);
+  });
+}
+
+async function loadCurrentImage(){
+  renderThumbs();
+  counter.textContent=images.length
+    ?`Imagem ${currentIndex+1} de ${images.length}`
+    :'Imagem 0 de 0';
+
+  if(!images.length)return;
+
+  imageWrap.querySelector('.empty')?.remove();
+  if(!imageWrap.contains(canvas))imageWrap.appendChild(canvas);
+  canvas.hidden=false;
+
+  const img=new Image();
+
+  if(/^https?:\/\//i.test(images[currentIndex].url)){
+    img.crossOrigin='anonymous';
+  }
+
+  img.onload=()=>{
+    const maxSide=900;
+    const ratio=Math.min(maxSide/img.width,maxSide/img.height,1);
+
+    canvas.width=Math.round(img.width*ratio);
+    canvas.height=Math.round(img.height*ratio);
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    extractFromCanvas();
+  };
+
+  img.onerror=()=>{
+    fileStatus.textContent=`Erro ao abrir: ${images[currentIndex].name}`;
+    showEmptyState('A imagem selecionada não pôde ser carregada.');
+  };
+
+  img.src=images[currentIndex].url;
+}
+function extractFromCanvas(){if(!images.length||!canvas.width)return;progressBar.style.width='30%';requestAnimationFrame(()=>{currentPalette=extractPalette(canvas,modeSelect.value,8);progressBar.style.width='100%';setTimeout(()=>progressBar.style.width='0',350);renderPalette(currentPalette)})}
+function extractPalette(canvas,mode,count){
+  const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+  const totalPixels=canvas.width*canvas.height;
+  const step=Math.max(1,Math.floor(totalPixels/70000));
+  const bins=new Map();
+
+  for(let i=0;i<data.length;i+=4*step){
+    const r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];
+    if(a<200)continue;
+
+    const [h,s,l]=rgbToHsl(r,g,b);
+    if(l<3||l>98)continue;
+
+    // Quantização mais fina para não misturar amarelo, laranja e tons próximos.
+    const q=16;
+    const qr=Math.min(255,Math.round(r/q)*q);
+    const qg=Math.min(255,Math.round(g/q)*q);
+    const qb=Math.min(255,Math.round(b/q)*q);
+    const key=`${qr},${qg},${qb}`;
+
+    const old=bins.get(key)||{r:0,g:0,b:0,count:0};
+    old.r+=r;
+    old.g+=g;
+    old.b+=b;
+    old.count++;
+    bins.set(key,old);
+  }
+
+  let points=[...bins.values()].map(bin=>{
+    const r=Math.round(bin.r/bin.count);
+    const g=Math.round(bin.g/bin.count);
+    const b=Math.round(bin.b/bin.count);
+    const hsl=rgbToHslObj(r,g,b);
+
+    // Cores vivas recebem um pequeno reforço, sem superar regiões realmente dominantes.
+    const chromaBoost=1+Math.min(hsl.s,85)/100*.38;
+    const lightnessPenalty=hsl.l>92||hsl.l<7?.45:1;
+
+    return{
+      r,g,b,
+      count:bin.count,
+      weight:bin.count*chromaBoost*lightnessPenalty,
+      ...hsl
+    };
+  });
+
+  if(!points.length){
+    return Array.from({length:count},()=>({
+      r:255,g:255,b:255,h:0,s:0,l:100,count:0,fallback:true,hex:'#FFFFFF'
+    }));
+  }
+
+  const clusterCount=Math.min(count,points.length);
+  let centroids=seedDominantCentroids(points,clusterCount);
+
+  for(let iteration=0;iteration<12;iteration++){
+    const clusters=centroids.map(()=>({r:0,g:0,b:0,weight:0,count:0}));
+
+    for(const point of points){
+      let best=0;
+      let bestDistance=Infinity;
+
+      centroids.forEach((centroid,index)=>{
+        const distance=rgbDistanceSquared(point,centroid);
+        if(distance<bestDistance){
+          bestDistance=distance;
+          best=index;
+        }
+      });
+
+      const cluster=clusters[best];
+      cluster.r+=point.r*point.weight;
+      cluster.g+=point.g*point.weight;
+      cluster.b+=point.b*point.weight;
+      cluster.weight+=point.weight;
+      cluster.count+=point.count;
+    }
+
+    centroids=centroids.map((centroid,index)=>{
+      const cluster=clusters[index];
+      if(!cluster.weight)return centroid;
+
+      return{
+        r:Math.round(cluster.r/cluster.weight),
+        g:Math.round(cluster.g/cluster.weight),
+        b:Math.round(cluster.b/cluster.weight),
+        count:cluster.count,
+        weight:cluster.weight
+      };
+    });
+  }
+
+  let colors=centroids.map(c=>{
+    const hsl=rgbToHslObj(c.r,c.g,c.b);
+    return{...c,...hsl};
+  });
+
+  if(mode==='dominant'){
+    colors.sort((a,b)=>dominantScore(b)-dominantScore(a));
+  }else if(mode==='balanced'){
+    colors.sort((a,b)=>scoreBalanced(b)-scoreBalanced(a));
+    colors=pickDistinct(colors,count,24);
+  }else{
+    colors=pickArtistic(colors,count);
+  }
+
+  // Evita duplicatas perceptualmente muito próximas, mas preserva cores principais.
+  if(mode==='dominant'){
+    colors=pickDistinct(colors,count,12);
+  }
+
+  while(colors.length<count){
+    colors.push({r:255,g:255,b:255,h:0,s:0,l:100,count:0,fallback:true});
+  }
+
+  return colors.slice(0,count).map(c=>({
+    ...c,
+    hex:rgbToHex(c.r,c.g,c.b)
+  }));
+}
+
+function dominantScore(color){
+  const saturationBoost=1+Math.min(color.s,85)/100*.32;
+  const usefulLightness=color.l>94||color.l<5?.55:1;
+  return(color.count||color.weight||0)*saturationBoost*usefulLightness;
+}
+
+function seedDominantCentroids(points,count){
+  const ordered=[...points].sort((a,b)=>b.weight-a.weight);
+  const selected=[ordered[0]];
+
+  while(selected.length<count){
+    let bestPoint=null;
+    let bestScore=-1;
+
+    for(const point of ordered){
+      if(selected.includes(point))continue;
+
+      const nearest=Math.min(...selected.map(c=>rgbDistanceSquared(point,c)));
+      const score=nearest*Math.sqrt(point.weight);
+
+      if(score>bestScore){
+        bestScore=score;
+        bestPoint=point;
+      }
+    }
+
+    if(!bestPoint)break;
+    selected.push(bestPoint);
+  }
+
+  return selected.map(point=>({
+    r:point.r,
+    g:point.g,
+    b:point.b,
+    count:point.count,
+    weight:point.weight
+  }));
+}
+
+function rgbDistanceSquared(a,b){
+  // Distância RGB ponderada: aproxima melhor a percepção humana que RGB puro.
+  const meanR=(a.r+b.r)/2;
+  const dr=a.r-b.r;
+  const dg=a.g-b.g;
+  const db=a.b-b.b;
+
+  return(2+meanR/256)*dr*dr+4*dg*dg+(2+(255-meanR)/256)*db*db;
+}
+
+function scoreBalanced(c){return c.count*.75+Math.min(c.s,75)*.8+(100-Math.abs(c.l-52))*.45}
+function colorDistance(a,b){const dh=Math.min(Math.abs(a.h-b.h),360-Math.abs(a.h-b.h))/180,ds=Math.abs(a.s-b.s)/100,dl=Math.abs(a.l-b.l)/100;return dh*65+ds*22+dl*35}
+function pickDistinct(colors,count,minDist){const picked=[];for(const c of colors){if(picked.every(p=>colorDistance(p,c)>=minDist))picked.push(c);if(picked.length===count)break}if(picked.length<count){for(const c of colors){if(!picked.includes(c))picked.push(c);if(picked.length===count)break}}return picked}
+function pickArtistic(colors,count){if(!colors.length)return[];colors.sort((a,b)=>scoreBalanced(b)-scoreBalanced(a));const picked=[colors[0]],warm=colors.filter(c=>(c.h<=80||c.h>=330)&&c.s>25).sort((a,b)=>scoreBalanced(b)-scoreBalanced(a))[0],cool=colors.filter(c=>c.h>=160&&c.h<=280&&c.s>20).sort((a,b)=>scoreBalanced(b)-scoreBalanced(a))[0],light=colors.filter(c=>c.l>62&&c.s<80).sort((a,b)=>scoreBalanced(b)-scoreBalanced(a))[0],dark=colors.filter(c=>c.l<42).sort((a,b)=>scoreBalanced(b)-scoreBalanced(a))[0];[warm,cool,light,dark].forEach(c=>{if(c&&picked.every(p=>colorDistance(p,c)>=18))picked.push(c)});for(const c of colors){if(picked.length>=count)break;if(picked.every(p=>colorDistance(p,c)>=28))picked.push(c)}return picked}
+function renderPalette(palette){paletteStrip.innerHTML='';colorList.innerHTML='';analysisText.textContent=images.length?`Imagem: ${images[currentIndex].name} • Modo: ${modeSelect.options[modeSelect.selectedIndex].text}`:'Aguardando imagem.';palette.forEach((c,i)=>{
+  const sw=document.createElement('div');
+  sw.className='swatch'+(c.fallback?' empty-swatch':'');
+  sw.style.background=c.fallback?'#FFFFFF':c.hex;
+  sw.innerHTML='';
+  if(!c.fallback){ sw.title = c.hex + ' — clique para copiar'; sw.dataset.copy = c.hex; }
+  paletteStrip.appendChild(sw);
+  const card=document.createElement('div');
+  card.className='color-card'+(c.fallback?' empty-card':'');
+  if(c.fallback){
+    card.innerHTML=`<span class="color-dot empty-dot"></span><span><span class="color-name">Cor ${i+1} • vazia</span><br><span class="color-meta">Imagem não gerou cor predominante suficiente.</span></span>`;
+  }else{
+    card.innerHTML=`<span class="color-dot" style="background:${c.hex}"></span><span><span class="color-name">Cor ${i+1} • ${c.hex}</span><br><span class="color-meta">RGB ${c.r}, ${c.g}, ${c.b} • HSL ${Math.round(c.h)}°, ${Math.round(c.s)}%, ${Math.round(c.l)}%</span></span><button class="btn" data-copy="${c.hex}">Copiar</button>`;
+  }
+  colorList.appendChild(card)
+});document.querySelectorAll('[data-copy]').forEach(btn=>btn.onclick=()=>copyText(btn.dataset.copy))}
+copyAllBtn.onclick=()=>{if(currentPalette.length)copyText(currentPalette.filter(c=>!c.fallback).map(c=>c.hex).join(', '))};
+downloadBtn.onclick=()=>{if(!currentPalette.length)return;const w=1400,h=700,out=document.createElement('canvas');out.width=w;out.height=h;const o=out.getContext('2d'),sw=w/currentPalette.length;currentPalette.forEach((c,i)=>{o.fillStyle=c.fallback?'#FFFFFF':c.hex;o.fillRect(i*sw,0,sw,h);if(!c.fallback){o.fillStyle='rgba(255,255,255,.88)';roundRect(o,i*sw+22,h-96,145,50,25);o.fill();o.fillStyle='#111827';o.font='bold 22px Arial';o.fillText(c.hex,i*sw+42,h-63)}});const a=document.createElement('a');a.download='paleta-extraida.png';a.href=out.toDataURL('image/png');a.click()};
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(error){
+    const area=document.createElement('textarea');
+    area.value=text;
+    area.style.position='fixed';
+    area.style.opacity='0';
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+  }
+  showCopyToast();
+}
+function showCopyToast(){
+  copyToast.classList.remove('show');
+  void copyToast.offsetWidth;
+  copyToast.classList.add('show');
+  clearTimeout(showCopyToast.timer);
+  showCopyToast.timer=setTimeout(()=>copyToast.classList.remove('show'),1800);
+}
+
+let deferredInstallPrompt=null;
+let selectedInstallPlatform='';
+
+window.addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();
+  deferredInstallPrompt=event;
+});
+
+window.addEventListener('appinstalled',()=>{
+  installModal.hidden=true;
+  installBtn.textContent='Instalado';
+  installBtn.disabled=true;
+});
+
+installBtn.addEventListener('click',()=>{
+  selectedInstallPlatform='';
+  confirmInstallBtn.disabled=true;
+  installHelp.textContent='A instalação será orientada conforme a plataforma escolhida.';
+  installModal.hidden=false;
+});
+
+closeInstallBtn.addEventListener('click',()=>installModal.hidden=true);
+installModal.addEventListener('click',event=>{
+  if(event.target===installModal)installModal.hidden=true;
+});
+
+document.querySelectorAll('[data-platform]').forEach(button=>{
+  button.addEventListener('click',()=>{
+    selectedInstallPlatform=button.dataset.platform;
+    document.querySelectorAll('[data-platform]').forEach(item=>item.setAttribute('aria-pressed','false'));
+    button.setAttribute('aria-pressed','true');
+    confirmInstallBtn.disabled=false;
+
+    if(selectedInstallPlatform==='ios'){
+      installHelp.textContent='No iPhone ou iPad: abra no Safari, toque em Compartilhar e escolha “Adicionar à Tela de Início”.';
+    }else if(deferredInstallPrompt){
+      installHelp.textContent='O navegador está pronto para abrir a instalação do aplicativo.';
+    }else{
+      installHelp.textContent='Abra esta página por HTTPS no Chrome ou Edge. Depois use o menu do navegador e escolha “Instalar aplicativo” ou “Adicionar à tela inicial”.';
+    }
+  });
+});
+
+confirmInstallBtn.addEventListener('click',async()=>{
+  if(!selectedInstallPlatform)return;
+
+  if(selectedInstallPlatform==='ios'){
+    installHelp.textContent='No Safari: Compartilhar → Adicionar à Tela de Início → Adicionar.';
+    return;
+  }
+
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt=null;
+    installModal.hidden=true;
+    return;
+  }
+
+  installHelp.textContent='A instalação automática só é liberada pelo navegador quando o site está publicado em HTTPS e atende aos requisitos de PWA.';
+});
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./service-worker.js').catch(error=>{
+      console.warn('Service Worker não registrado:',error);
+    });
+  });
+}
+
+function rgbToHex(r,g,b){return'#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase()}function rgbToHslObj(r,g,b){const[h,s,l]=rgbToHsl(r,g,b);return{h,s,l}}function rgbToHsl(r,g,b){r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b);let h=0,s=0,l=(max+min)/2;if(max!==min){const d=max-min;s=l>.5?d/(2-max-min):d/(max+min);switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break}h*=60}return[h,s*100,l*100]}
+</script>
+</body></html>
