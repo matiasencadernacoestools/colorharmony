@@ -135,7 +135,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
       </label>
 
       <div class="small">
-        As sugestões combinam teoria das cores, contraste, luminosidade, saturação e os acentos cromáticos encontrados na imagem atual.
+        As sugestões distinguem cores cromáticas de tons neutros e aplicam harmonias específicas para moda, incluindo monocromática, análoga, complementar, triádica e composição 60-30-10.
       </div>
 
       <button class="btn" id="generateSuggestionsBtn" type="button">Gerar paletas</button>
@@ -751,6 +751,7 @@ function roundedRectPath(context,x,y,width,height,radius){
   context.closePath();
 }
 
+
 function generateSuggestedPalettes(){
   const baseHex=baseColorPicker.value.toUpperCase();
   baseColorHex.textContent=baseHex;
@@ -759,136 +760,208 @@ function generateSuggestedPalettes(){
   const [h,s,l]=rgbToHsl(base.r,base.g,base.b);
 
   const references=(currentPalette||[]).filter(c=>!c.fallback);
-  const imageAccent=findImageAccent(references,base);
-  const accentHex=imageAccent?.hex||hslToHex(h+48,72,52);
-  const accentRgb=hexToRgb(accentHex);
-  const [ah,as,al]=rgbToHsl(accentRgb.r,accentRgb.g,accentRgb.b);
+  const accent=findImageAccent(references,base);
+  const accentHex=accent?.hex||hslToHex(h+45,78,52);
 
-  const neutralBase=s<18;
+  const isNeutral=s<15;
 
-  const palettes=[
-    {
-      name:'Análoga refinada',
-      badge:'Harmonia suave',
-      description:'Matizes vizinhos com variação controlada de luz e saturação para manter unidade visual.',
-      colors:[
-        hslToHex(h-32,Math.max(24,s*.72),clamp(l+16,20,90)),
-        hslToHex(h-14,Math.max(30,s*.88),clamp(l+7,16,84)),
-        baseHex,
-        hslToHex(h+16,Math.max(30,s*.86),clamp(l-5,12,76)),
-        hslToHex(h+34,Math.max(24,s*.68),clamp(l-14,8,66))
-      ]
-    },
-    {
-      name:'Complementar com acento da imagem',
-      badge:'Contraste principal',
-      description:'Mantém a cor selecionada como base e incorpora um acento real extraído da imagem para preservar sua identidade visual.',
-      colors:[
-        hslToHex(h,Math.max(12,s*.26),clamp(l+34,74,94)),
-        hslToHex(h,Math.max(20,s*.58),clamp(l+12,24,84)),
-        baseHex,
-        accentHex,
-        hslToHex(ah,Math.max(28,as*.58),clamp(al-26,8,48))
-      ]
-    },
-    {
-      name:'Complementar dividida',
-      badge:'Contraste equilibrado',
-      description:'Usa dois matizes próximos ao complementar, produzindo contraste forte com menor agressividade visual.',
-      colors:[
-        hslToHex(h,Math.max(16,s*.36),clamp(l+28,68,92)),
-        baseHex,
-        hslToHex(h+150,Math.max(54,s*.82),clamp(l+4,22,76)),
-        hslToHex(h+210,Math.max(52,s*.78),clamp(l-2,16,70)),
-        hslToHex(h+180,Math.max(18,s*.34),clamp(l-24,8,48))
-      ]
-    },
-    {
-      name:'Tríade editorial',
-      badge:'Equilíbrio em 120°',
-      description:'Distribui três famílias cromáticas em intervalos de 120°, com saturação moderada para uso editorial e digital.',
-      colors:[
-        hslToHex(h,Math.max(18,s*.38),clamp(l+30,70,93)),
-        baseHex,
-        hslToHex(h+120,Math.max(48,s*.74),clamp(l+3,18,76)),
-        hslToHex(h+240,Math.max(46,s*.70),clamp(l-5,14,68)),
-        hslToHex(h+240,Math.max(16,s*.30),clamp(l-26,7,46))
-      ]
-    },
-    {
-      name:'Paleta fotográfica expandida',
-      badge:'Baseada na imagem',
-      description:'Cruza a cor selecionada com os tons predominantes e com o principal acento cromático da fotografia.',
-      colors:buildPhotographicPalette(baseHex,references,accentHex,neutralBase)
-    }
-  ];
+  const palettes=isNeutral
+    ?buildNeutralFashionPalettes(baseHex,l,references,accentHex)
+    :buildChromaticFashionPalettes(baseHex,h,s,l,references,accentHex);
 
   renderSuggestedPalettes(palettes);
   suggestedEmpty.hidden=true;
   suggestedPalettes.hidden=false;
 }
 
+function buildChromaticFashionPalettes(baseHex,h,s,l,references,accentHex){
+  return[
+    {
+      name:'Monocromática',
+      badge:'Minimalista • Elegante • Quiet Luxury',
+      description:'Mantém o mesmo matiz e varia luminosidade e saturação para criar profundidade sem perder unidade visual.',
+      colors:[
+        hslToHex(h,Math.max(18,s*.35),clamp(l+34,76,95)),
+        hslToHex(h,Math.max(30,s*.58),clamp(l+18,56,88)),
+        baseHex,
+        hslToHex(h,Math.max(42,s*.82),clamp(l-14,18,64)),
+        hslToHex(h,Math.max(28,s*.54),clamp(l-32,7,42))
+      ]
+    },
+    {
+      name:'Análoga',
+      badge:'Romântico • Boho • Criativo suave',
+      description:'Usa matizes vizinhos no círculo cromático em intervalos controlados de 15° e 30°.',
+      colors:[
+        hslToHex(h-30,Math.max(34,s*.76),clamp(l+8,18,86)),
+        hslToHex(h-15,Math.max(38,s*.88),clamp(l+4,16,82)),
+        baseHex,
+        hslToHex(h+15,Math.max(38,s*.86),clamp(l-3,14,76)),
+        hslToHex(h+30,Math.max(32,s*.70),clamp(l-10,10,68))
+      ]
+    },
+    {
+      name:'Complementar',
+      badge:'Streetwear • Pop • Sporty',
+      description:'Combina a cor base com a oposta em 180°, equilibrada por variações tonais e um neutro de apoio.',
+      colors:[
+        hslToHex(h,Math.max(18,s*.30),clamp(l+30,72,94)),
+        hslToHex(h,Math.max(34,s*.66),clamp(l+10,28,82)),
+        baseHex,
+        hslToHex(h+180,Math.max(52,s*.90),clamp(l,20,72)),
+        hslToHex(h+180,Math.max(20,s*.36),clamp(l-24,8,46))
+      ]
+    },
+    {
+      name:'Triádica',
+      badge:'Kidcore • Retrô • Dopamine Dressing',
+      description:'Aplica três matizes equidistantes em 120°, com controle de saturação para manter equilíbrio visual.',
+      colors:[
+        hslToHex(h,Math.max(18,s*.34),clamp(l+28,70,92)),
+        baseHex,
+        hslToHex(h+120,Math.max(48,s*.78),clamp(l+2,18,74)),
+        hslToHex(h+240,Math.max(48,s*.76),clamp(l-4,14,68)),
+        hslToHex(h+240,Math.max(16,s*.28),clamp(l-26,7,44))
+      ]
+    },
+    {
+      name:'Moda 60-30-10',
+      badge:'Composição baseada na imagem',
+      description:'Organiza uma cor dominante, uma secundária e um acento visual, usando a imagem atual como referência cromática.',
+      colors:buildFashion603010(baseHex,references,accentHex,false)
+    }
+  ];
+}
+
+function buildNeutralFashionPalettes(baseHex,l,references,accentHex){
+  const baseGray=hexToRgb(baseHex);
+  const warmNeutral=findWarmNeutral(references);
+  const warmHex=warmNeutral?.hex||'#C2A47A';
+
+  return[
+    {
+      name:'Monocromática neutra',
+      badge:'Minimalista • Elegante • Quiet Luxury',
+      description:'Varia apenas luminosidade e profundidade do neutro selecionado, sem introduzir novas famílias cromáticas.',
+      colors:[
+        grayHex(clamp(l+42,88,98)),
+        grayHex(clamp(l+24,70,90)),
+        baseHex,
+        grayHex(clamp(l-18,18,56)),
+        grayHex(clamp(l-36,5,32))
+      ]
+    },
+    {
+      name:'Acromática',
+      badge:'Casual • Urbano • Rock',
+      description:'Usa exclusivamente branco, cinzas e preto para destacar corte, textura e silhueta.',
+      colors:[
+        '#F5F5F3',
+        '#C9CBCB',
+        baseHex,
+        '#5B5D60',
+        '#151515'
+      ]
+    },
+    {
+      name:'Neutros com acento da imagem',
+      badge:'Versátil • Contemporânea',
+      description:'Mantém uma base neutra e incorpora o principal acento cromático detectado na fotografia.',
+      colors:[
+        '#EEEAE2',
+        baseHex,
+        '#70757A',
+        accentHex,
+        darkenHex(accentHex,34)
+      ]
+    },
+    {
+      name:'Quiet Luxury',
+      badge:'Sofisticação discreta',
+      description:'Combina neutros refinados, areia, camel, marfim e grafite com baixa saturação.',
+      colors:[
+        '#F1ECE3',
+        '#D8C7AE',
+        warmHex,
+        baseHex,
+        '#2A2B2C'
+      ]
+    },
+    {
+      name:'Urbano 60-30-10',
+      badge:'Base neutra + ponto de cor',
+      description:'Estrutura 60% neutro dominante, 30% neutro secundário e 10% acento cromático retirado da imagem.',
+      colors:buildFashion603010(baseHex,references,accentHex,true)
+    }
+  ];
+}
+
+function buildFashion603010(baseHex,references,accentHex,isNeutral){
+  const light=[...references].sort((a,b)=>b.l-a.l).find(c=>c.l<96);
+  const dark=[...references].sort((a,b)=>a.l-b.l).find(c=>c.l>4);
+  const dominant=[...references].sort((a,b)=>dominantScore(b)-dominantScore(a))[0];
+
+  const lightHex=light?.hex||(isNeutral?'#E8E5DE':lightenHex(baseHex,30));
+  const darkHex=dark?.hex||(isNeutral?'#242526':darkenHex(baseHex,32));
+  const secondaryHex=dominant?.hex||lightenHex(baseHex,12);
+
+  return[
+    lightHex,
+    baseHex,
+    secondaryHex,
+    accentHex,
+    darkHex
+  ];
+}
+
 function findImageAccent(references,base){
   if(!references.length)return null;
 
   const baseHsl=rgbToHsl(base.r,base.g,base.b);
+  const baseIsNeutral=baseHsl[1]<15;
 
   return [...references]
     .map(color=>{
       const colorHsl=rgbToHsl(color.r,color.g,color.b);
-      const hueContrast=circularHueDistance(baseHsl[0],colorHsl[0])/180;
       const saturation=colorHsl[1]/100;
       const usefulLightness=1-Math.abs(colorHsl[2]-52)/52;
       const frequency=Math.log1p(color.count||1);
+      const hueContrast=baseIsNeutral
+        ?0
+        :circularHueDistance(baseHsl[0],colorHsl[0])/180;
+
       const score=
-        saturation*3.2+
-        usefulLightness*1.1+
-        hueContrast*.8+
-        frequency*.08;
+        saturation*4.6+
+        usefulLightness*1.4+
+        hueContrast*.5+
+        frequency*.04;
+
       return{color,score};
     })
+    .filter(item=>item.color.s>=24&&item.color.l>=12&&item.color.l<=86)
     .sort((a,b)=>b.score-a.score)[0]?.color||null;
 }
 
-function buildPhotographicPalette(baseHex,references,accentHex,neutralBase){
-  if(!references.length){
-    const base=hexToRgb(baseHex);
-    const [h,s,l]=rgbToHsl(base.r,base.g,base.b);
-    return[
-      hslToHex(h,Math.max(12,s*.25),clamp(l+34,74,94)),
-      baseHex,
-      accentHex,
-      hslToHex(h+90,48,48),
-      hslToHex(h,Math.max(10,s*.20),clamp(l-30,6,42))
-    ];
-  }
+function findWarmNeutral(references){
+  return [...references]
+    .filter(c=>c.s>=10&&c.s<=55&&c.h>=20&&c.h<=55&&c.l>=28&&c.l<=82)
+    .sort((a,b)=>dominantScore(b)-dominantScore(a))[0]||null;
+}
 
-  const sorted=[...references].sort((a,b)=>dominantScore(b)-dominantScore(a));
-  const vivid=[...references].sort((a,b)=>b.s-a.s);
-  const light=[...references].sort((a,b)=>b.l-a.l);
-  const dark=[...references].sort((a,b)=>a.l-b.l);
+function grayHex(lightness){
+  return hslToHex(0,0,clamp(lightness,0,100));
+}
 
-  const candidates=[
-    light.find(c=>c.l<96)?.hex,
-    neutralBase?sorted[0]?.hex:baseHex,
-    accentHex,
-    vivid.find(c=>c.hex!==accentHex)?.hex,
-    dark.find(c=>c.l>4)?.hex
-  ].filter(Boolean);
+function lightenHex(hex,amount){
+  const rgb=hexToRgb(hex);
+  const [h,s,l]=rgbToHsl(rgb.r,rgb.g,rgb.b);
+  return hslToHex(h,s,clamp(l+amount,0,100));
+}
 
-  const result=[];
-  for(const hex of candidates){
-    if(!result.some(existing=>rgbDistanceSquared(hexToRgb(existing),hexToRgb(hex))<900)){
-      result.push(hex);
-    }
-  }
-
-  while(result.length<5){
-    const fallback=sorted.find(c=>!result.includes(c.hex));
-    result.push(fallback?.hex||baseHex);
-  }
-
-  return result.slice(0,5);
+function darkenHex(hex,amount){
+  const rgb=hexToRgb(hex);
+  const [h,s,l]=rgbToHsl(rgb.r,rgb.g,rgb.b);
+  return hslToHex(h,s,clamp(l-amount,0,100));
 }
 
 function renderSuggestedPalettes(palettes){
