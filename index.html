@@ -106,6 +106,19 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 .match-palette-color{min-height:240px}
 .match-color-list{display:grid;grid-template-columns:1fr;gap:10px}
 @media(min-width:700px){.match-color-list{grid-template-columns:repeat(2,1fr)}}
+
+.workspace.match-mode{grid-template-columns:1fr}
+.workspace.match-mode #mainViewer{display:none}
+.workspace.match-mode #palettePanel{width:100%;max-width:none}
+.workspace.match-mode #matchPanel{width:100%}
+.workspace.match-mode .match-layout{grid-template-columns:minmax(320px,.85fr) minmax(460px,1.15fr)}
+.workspace.match-mode .match-image-wrap{min-height:520px}
+.workspace.match-mode #matchCanvas{max-height:720px}
+@media(max-width:900px){
+  .workspace.match-mode .match-layout{grid-template-columns:1fr}
+  .workspace.match-mode .match-image-wrap{min-height:320px}
+}
+
 </style>
 </head>
 <body>
@@ -129,10 +142,10 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 </div>
 <div class="options"><label>Modo de extração<select id="modeSelect"><option value="dominant">Cores predominantes</option><option value="balanced">Equilibrada</option><option value="artistic">Artística</option></select></label><div class="actions"><button class="btn" id="copyAllBtn">Copiar todos os HEX</button><button class="btn" id="downloadBtn">Baixar PNG da paleta</button></div><p class="small">Predominantes prioriza frequência. Equilibrada reduz cores parecidas. Artística busca contraste entre quente, frio, claro e escuro.</p></div>
 </section>
-<section class="workspace">
-<div class="card viewer"><div class="nav"><button class="btn" id="prevBtn">◀ Anterior</button><strong id="counter">Imagem 0 de 0</strong><button class="btn" id="nextBtn">Próxima ▶</button></div><div class="image-wrap" id="imageWrap"><div class="empty">Carregue imagens para iniciar o teste.</div><canvas id="previewCanvas" hidden></canvas></div><div class="swipe-hint">Deslize a imagem para a esquerda ou direita</div><div class="thumbs" id="thumbs"></div></div>
+<section class="workspace" id="workspace">
+<div class="card viewer" id="mainViewer"><div class="nav"><button class="btn" id="prevBtn">◀ Anterior</button><strong id="counter">Imagem 0 de 0</strong><button class="btn" id="nextBtn">Próxima ▶</button></div><div class="image-wrap" id="imageWrap"><div class="empty">Carregue imagens para iniciar o teste.</div><canvas id="previewCanvas" hidden></canvas></div><div class="swipe-hint">Deslize a imagem para a esquerda ou direita</div><div class="thumbs" id="thumbs"></div></div>
 
-<div class="card palette-panel">
+<div class="card palette-panel" id="palettePanel">
   <div class="tabs" role="tablist" aria-label="Paletas">
     <button class="tab-btn active" id="extractedTabBtn" type="button" role="tab" aria-selected="true" aria-controls="extractedPanel">Paleta extraída</button>
     <button class="tab-btn" id="suggestedTabBtn" type="button" role="tab" aria-selected="false" aria-controls="suggestedPanel">Paletas sugeridas</button>
@@ -220,7 +233,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <script>
 const input=document.getElementById('imageInput'),fileStatus=document.getElementById('fileStatus'),canvas=document.getElementById('previewCanvas'),ctx=canvas.getContext('2d',{willReadFrequently:true}),imageWrap=document.getElementById('imageWrap'),thumbs=document.getElementById('thumbs'),counter=document.getElementById('counter'),prevBtn=document.getElementById('prevBtn'),nextBtn=document.getElementById('nextBtn'),paletteStrip=document.getElementById('paletteStrip'),colorList=document.getElementById('colorList'),analysisText=document.getElementById('analysisText'),copyAllBtn=document.getElementById('copyAllBtn'),downloadBtn=document.getElementById('downloadBtn'),modeSelect=document.getElementById('modeSelect'),progressBar=document.getElementById('progressBar'),presetStatus=document.getElementById('presetStatus'),copyToast=document.getElementById('copyToast'),installBtn=document.getElementById('installBtn'),installModal=document.getElementById('installModal'),installHelp=document.getElementById('installHelp'),closeInstallBtn=document.getElementById('closeInstallBtn'),confirmInstallBtn=document.getElementById('confirmInstallBtn'),extractedTabBtn=document.getElementById('extractedTabBtn'),suggestedTabBtn=document.getElementById('suggestedTabBtn'),extractedPanel=document.getElementById('extractedPanel'),suggestedPanel=document.getElementById('suggestedPanel'),baseColorPicker=document.getElementById('baseColorPicker'),baseColorHex=document.getElementById('baseColorHex'),generateSuggestionsBtn=document.getElementById('generateSuggestionsBtn'),suggestedEmpty=document.getElementById('suggestedEmpty'),suggestedPalettes=document.getElementById('suggestedPalettes'),saveExtractedPaletteBtn=document.getElementById('saveExtractedPaletteBtn');
 let images=[],currentIndex=0,currentPalette=[];
-const matchTabBtn=document.getElementById('matchTabBtn'),matchPanel=document.getElementById('matchPanel'),matchSelectedDot=document.getElementById('matchSelectedDot'),matchSelectedHex=document.getElementById('matchSelectedHex'),matchCount=document.getElementById('matchCount'),matchEmpty=document.getElementById('matchEmpty'),matchContent=document.getElementById('matchContent'),matchPrevBtn=document.getElementById('matchPrevBtn'),matchNextBtn=document.getElementById('matchNextBtn'),matchCounter=document.getElementById('matchCounter'),matchCanvas=document.getElementById('matchCanvas'),matchCtx=matchCanvas.getContext('2d',{willReadFrequently:true}),matchScore=document.getElementById('matchScore'),matchThumbs=document.getElementById('matchThumbs'),matchPaletteStrip=document.getElementById('matchPaletteStrip'),matchColorList=document.getElementById('matchColorList');
+const workspace=document.getElementById('workspace'),mainViewer=document.getElementById('mainViewer'),palettePanel=document.getElementById('palettePanel'),matchTabBtn=document.getElementById('matchTabBtn'),matchPanel=document.getElementById('matchPanel'),matchSelectedDot=document.getElementById('matchSelectedDot'),matchSelectedHex=document.getElementById('matchSelectedHex'),matchCount=document.getElementById('matchCount'),matchEmpty=document.getElementById('matchEmpty'),matchContent=document.getElementById('matchContent'),matchPrevBtn=document.getElementById('matchPrevBtn'),matchNextBtn=document.getElementById('matchNextBtn'),matchCounter=document.getElementById('matchCounter'),matchCanvas=document.getElementById('matchCanvas'),matchCtx=matchCanvas.getContext('2d',{willReadFrequently:true}),matchScore=document.getElementById('matchScore'),matchThumbs=document.getElementById('matchThumbs'),matchPaletteStrip=document.getElementById('matchPaletteStrip'),matchColorList=document.getElementById('matchColorList');
 let matchResults=[],matchIndex=0,matchSearchTimer=null;
 const presetColorCache=new Map(),MATCH_THRESHOLD=.95;
 
@@ -748,17 +761,34 @@ function showCopyToast(){
 
 
 function activatePaletteTab(tab){
-  const showExtracted=tab==='extracted',showSuggested=tab==='suggested',showMatch=tab==='match';
+  const showExtracted=tab==='extracted';
+  const showSuggested=tab==='suggested';
+  const showMatch=tab==='match';
+
   extractedTabBtn.classList.toggle('active',showExtracted);
   suggestedTabBtn.classList.toggle('active',showSuggested);
   matchTabBtn.classList.toggle('active',showMatch);
+
   extractedTabBtn.setAttribute('aria-selected',String(showExtracted));
   suggestedTabBtn.setAttribute('aria-selected',String(showSuggested));
   matchTabBtn.setAttribute('aria-selected',String(showMatch));
+
   extractedPanel.hidden=!showExtracted;
   suggestedPanel.hidden=!showSuggested;
   matchPanel.hidden=!showMatch;
-  if(showMatch){matchTabBtn.classList.remove('alert');renderCurrentMatch();}
+
+  // Ao abrir Match, remove completamente o visualizador principal
+  // e faz o painel Match ocupar toda a largura disponível.
+  workspace.classList.toggle('match-mode',showMatch);
+
+  if(showMatch){
+    matchTabBtn.classList.remove('alert');
+    renderCurrentMatch();
+    window.scrollTo({
+      top:workspace.getBoundingClientRect().top+window.scrollY-16,
+      behavior:'smooth'
+    });
+  }
 }
 extractedTabBtn.addEventListener('click',()=>activatePaletteTab('extracted'));
 suggestedTabBtn.addEventListener('click',()=>activatePaletteTab('suggested'));
