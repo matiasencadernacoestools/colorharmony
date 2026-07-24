@@ -23,7 +23,11 @@ main{max-width:1180px;margin:0 auto;padding:18px}.card{background:var(--card);bo
 input[type=file]{display:none}.file-btn,.btn,select{border:1px solid var(--border);background:#fff;color:var(--text);border-radius:14px;padding:12px 16px;font-weight:800;cursor:pointer}.file-btn{background:#fff7db;border-color:#e6c65a}.status{font-weight:700;color:var(--muted)}
 .options{display:grid;gap:10px}.options label{display:grid;gap:6px;font-weight:800}select{width:100%}.workspace{display:grid;grid-template-columns:1fr;gap:18px;margin-top:18px}@media(min-width:980px){.workspace{grid-template-columns:.9fr 1.1fr}}
 .viewer{display:grid;gap:14px}.nav{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}.image-wrap{min-height:320px;background:#eef1f7;border:1px solid var(--border);border-radius:18px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-#previewCanvas{max-width:100%;max-height:620px;display:block}.empty{color:var(--muted);text-align:center;padding:40px 16px}.thumbs{display:flex;gap:8px;overflow:auto;padding:8px 2px 4px}
+#previewCanvas{max-width:100%;max-height:620px;display:block;touch-action:pan-y;user-select:none;-webkit-user-drag:none;transition:transform .18s ease,opacity .18s ease}
+.image-wrap.swiping-left #previewCanvas{transform:translateX(-22px);opacity:.82}
+.image-wrap.swiping-right #previewCanvas{transform:translateX(22px);opacity:.82}
+.swipe-hint{display:none;text-align:center;color:var(--muted);font-size:.82rem;font-weight:700}
+@media(max-width:760px){.swipe-hint{display:block}}.empty{color:var(--muted);text-align:center;padding:40px 16px}.thumbs{display:flex;gap:8px;overflow:auto;padding:8px 2px 4px}
 .thumb-item{position:relative;width:66px;height:66px;flex:0 0 auto}
 .thumb{width:66px;height:66px;display:block;border-radius:12px;border:3px solid transparent;object-fit:cover;cursor:pointer;background:#eee}
 .thumb.active{border-color:var(--accent)}
@@ -103,7 +107,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <div class="options"><label>Modo de extração<select id="modeSelect"><option value="dominant">Cores predominantes</option><option value="balanced">Equilibrada</option><option value="artistic">Artística</option></select></label><div class="actions"><button class="btn" id="copyAllBtn">Copiar todos os HEX</button><button class="btn" id="downloadBtn">Baixar PNG da paleta</button></div><p class="small">Predominantes prioriza frequência. Equilibrada reduz cores parecidas. Artística busca contraste entre quente, frio, claro e escuro.</p></div>
 </section>
 <section class="workspace">
-<div class="card viewer"><div class="nav"><button class="btn" id="prevBtn">◀ Anterior</button><strong id="counter">Imagem 0 de 0</strong><button class="btn" id="nextBtn">Próxima ▶</button></div><div class="image-wrap" id="imageWrap"><div class="empty">Carregue imagens para iniciar o teste.</div><canvas id="previewCanvas" hidden></canvas></div><div class="thumbs" id="thumbs"></div></div>
+<div class="card viewer"><div class="nav"><button class="btn" id="prevBtn">◀ Anterior</button><strong id="counter">Imagem 0 de 0</strong><button class="btn" id="nextBtn">Próxima ▶</button></div><div class="image-wrap" id="imageWrap"><div class="empty">Carregue imagens para iniciar o teste.</div><canvas id="previewCanvas" hidden></canvas></div><div class="swipe-hint">Deslize a imagem para a esquerda ou direita</div><div class="thumbs" id="thumbs"></div></div>
 
 <div class="card palette-panel">
   <div class="tabs" role="tablist" aria-label="Paletas">
@@ -314,7 +318,83 @@ nextBtn.onclick=async()=>{
   await loadCurrentImage();
 };
 
+
 modeSelect.onchange=()=>extractFromCanvas();
+
+let touchStartX=0;
+let touchStartY=0;
+let touchCurrentX=0;
+let touchCurrentY=0;
+let touchTracking=false;
+
+const SWIPE_MIN_DISTANCE=55;
+const SWIPE_MAX_VERTICAL=80;
+const SWIPE_DIRECTION_RATIO=1.25;
+
+imageWrap.addEventListener('touchstart',event=>{
+  if(!images.length||event.touches.length!==1)return;
+
+  const touch=event.touches[0];
+  touchStartX=touch.clientX;
+  touchStartY=touch.clientY;
+  touchCurrentX=touchStartX;
+  touchCurrentY=touchStartY;
+  touchTracking=true;
+
+  imageWrap.classList.remove('swiping-left','swiping-right');
+},{passive:true});
+
+imageWrap.addEventListener('touchmove',event=>{
+  if(!touchTracking||event.touches.length!==1)return;
+
+  const touch=event.touches[0];
+  touchCurrentX=touch.clientX;
+  touchCurrentY=touch.clientY;
+
+  const deltaX=touchCurrentX-touchStartX;
+  const deltaY=touchCurrentY-touchStartY;
+
+  imageWrap.classList.remove('swiping-left','swiping-right');
+
+  if(Math.abs(deltaX)>18&&Math.abs(deltaX)>Math.abs(deltaY)){
+    imageWrap.classList.add(deltaX<0?'swiping-left':'swiping-right');
+  }
+},{passive:true});
+
+imageWrap.addEventListener('touchend',async()=>{
+  if(!touchTracking)return;
+  touchTracking=false;
+
+  const deltaX=touchCurrentX-touchStartX;
+  const deltaY=touchCurrentY-touchStartY;
+
+  imageWrap.classList.remove('swiping-left','swiping-right');
+
+  const isHorizontal=
+    Math.abs(deltaX)>=SWIPE_MIN_DISTANCE&&
+    Math.abs(deltaY)<=SWIPE_MAX_VERTICAL&&
+    Math.abs(deltaX)>=Math.abs(deltaY)*SWIPE_DIRECTION_RATIO;
+
+  if(!isHorizontal||!images.length)return;
+
+  if(deltaX<0){
+    currentIndex=(currentIndex+1)%images.length;
+  }else{
+    currentIndex=(currentIndex-1+images.length)%images.length;
+  }
+
+  if(navigator.vibrate){
+    navigator.vibrate(18);
+  }
+
+  await loadCurrentImage();
+},{passive:true});
+
+imageWrap.addEventListener('touchcancel',()=>{
+  touchTracking=false;
+  imageWrap.classList.remove('swiping-left','swiping-right');
+});
+
 
 function showEmptyState(message){
   canvas.hidden=true;
