@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.png">
 <link rel="apple-touch-icon" href="icone.png">
-<title>Color Harmony v12 — Laboratório de Presets de Cores</title>
+<title>Color Harmony v13 — Laboratório de Presets de Cores</title>
 <style>
 :root{--bg:#f5f6fa;--card:#fff;--text:#141824;--muted:#596275;--border:#d8deea;--accent:#d4a017;--shadow:0 18px 45px rgba(20,24,36,.08)}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text)}
@@ -180,7 +180,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <img class="brand-logo" src="LOGO_HC.png" alt="Color Harmony" decoding="async" fetchpriority="high">
 <h1>Laboratório de Presets de Cores</h1>
 <p class="subtitle">Carregue várias imagens, navegue entre elas e extraia automaticamente uma paleta de 8 cores predominantes, com HEX copiável e download em PNG.</p>
-<div class="version-badge" id="appVersion">Versão 12</div>
+<div class="version-badge" id="appVersion">Versão 13</div>
 </header>
 <main>
 <section class="card controls">
@@ -202,7 +202,6 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <div class="card palette-panel" id="palettePanel">
   <div class="tabs" role="tablist" aria-label="Paletas">
     <button class="tab-btn active" id="extractedTabBtn" type="button" role="tab" aria-selected="true" aria-controls="extractedPanel">Paleta extraída</button>
-    <button class="tab-btn" id="suggestedTabBtn" type="button" role="tab" aria-selected="false" aria-controls="suggestedPanel">Paletas sugeridas</button>
     <button class="tab-btn match-tab" id="matchTabBtn" type="button" role="tab" aria-selected="false" aria-controls="matchPanel" disabled>Match</button>
   </div>
 
@@ -213,11 +212,11 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
       <label class="color-picker-field">
         Seletor de cor
         <span class="color-picker-wrap">
-          <input id="baseColorPicker" type="color" value="#D4A017" aria-label="Selecionar cor base para Match e harmonias">
+          <input id="baseColorPicker" type="color" value="#D4A017" aria-label="Selecionar cor base para Match">
           <span id="baseColorHex">#D4A017</span>
         </span>
       </label>
-      <div class="small">Escolha uma cor para procurar imagens PRESETS com pelo menos 95% de similaridade cromática. O mesmo seletor continua alimentando as paletas sugeridas.</div>
+      <div class="small">Escolha uma cor para procurar imagens PRESETS com pelo menos 95% de similaridade cromática. O seletor é utilizado para localizar correspondências na aba Match.</div>
     </div>
     <div class="palette-strip" id="paletteStrip"></div>
     <div class="color-list" id="colorList"></div>
@@ -226,18 +225,6 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
     </div>
   </section>
 
-  <section class="tab-panel" id="suggestedPanel" role="tabpanel" aria-labelledby="suggestedTabBtn" hidden>
-    <h2 style="margin:0">Paletas sugeridas</h2>
-    <p class="small">Selecione uma cor base na aba Paleta extraída para gerar combinações tecnicamente coerentes.</p>
-    <div class="actions"><button class="btn" id="generateSuggestionsBtn" type="button">Gerar paletas</button></div>
-
-
-    <div id="suggestedEmpty" class="suggested-empty">
-      Use o seletor de cores para gerarmos uma paleta de cores.
-    </div>
-
-    <div id="suggestedPalettes" class="suggested-palettes" hidden></div>
-  </section>
 
   <section class="tab-panel" id="matchPanel" role="tabpanel" aria-labelledby="matchTabBtn" hidden>
     <h2 style="margin:0">Match</h2>
@@ -295,7 +282,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
   </section>
 </div>
 <script>
-const input=document.getElementById('imageInput'),fileStatus=document.getElementById('fileStatus'),canvas=document.getElementById('previewCanvas'),ctx=canvas.getContext('2d',{willReadFrequently:true}),imageWrap=document.getElementById('imageWrap'),thumbs=document.getElementById('thumbs'),counter=document.getElementById('counter'),prevBtn=document.getElementById('prevBtn'),nextBtn=document.getElementById('nextBtn'),paletteStrip=document.getElementById('paletteStrip'),colorList=document.getElementById('colorList'),analysisText=document.getElementById('analysisText'),copyAllBtn=document.getElementById('copyAllBtn'),downloadBtn=document.getElementById('downloadBtn'),modeSelect=document.getElementById('modeSelect'),progressBar=document.getElementById('progressBar'),presetStatus=document.getElementById('presetStatus'),copyToast=document.getElementById('copyToast'),installBtn=document.getElementById('installBtn'),installModal=document.getElementById('installModal'),installHelp=document.getElementById('installHelp'),closeInstallBtn=document.getElementById('closeInstallBtn'),confirmInstallBtn=document.getElementById('confirmInstallBtn'),extractedTabBtn=document.getElementById('extractedTabBtn'),suggestedTabBtn=document.getElementById('suggestedTabBtn'),extractedPanel=document.getElementById('extractedPanel'),suggestedPanel=document.getElementById('suggestedPanel'),baseColorPicker=document.getElementById('baseColorPicker'),baseColorHex=document.getElementById('baseColorHex'),generateSuggestionsBtn=document.getElementById('generateSuggestionsBtn'),suggestedEmpty=document.getElementById('suggestedEmpty'),suggestedPalettes=document.getElementById('suggestedPalettes'),saveExtractedPaletteBtn=document.getElementById('saveExtractedPaletteBtn');
+const input=document.getElementById('imageInput'),fileStatus=document.getElementById('fileStatus'),canvas=document.getElementById('previewCanvas'),ctx=canvas.getContext('2d',{willReadFrequently:true}),imageWrap=document.getElementById('imageWrap'),thumbs=document.getElementById('thumbs'),counter=document.getElementById('counter'),prevBtn=document.getElementById('prevBtn'),nextBtn=document.getElementById('nextBtn'),paletteStrip=document.getElementById('paletteStrip'),colorList=document.getElementById('colorList'),analysisText=document.getElementById('analysisText'),copyAllBtn=document.getElementById('copyAllBtn'),downloadBtn=document.getElementById('downloadBtn'),modeSelect=document.getElementById('modeSelect'),progressBar=document.getElementById('progressBar'),presetStatus=document.getElementById('presetStatus'),copyToast=document.getElementById('copyToast'),installBtn=document.getElementById('installBtn'),installModal=document.getElementById('installModal'),installHelp=document.getElementById('installHelp'),closeInstallBtn=document.getElementById('closeInstallBtn'),confirmInstallBtn=document.getElementById('confirmInstallBtn'),extractedTabBtn=document.getElementById('extractedTabBtn'),extractedPanel=document.getElementById('extractedPanel'),baseColorPicker=document.getElementById('baseColorPicker'),baseColorHex=document.getElementById('baseColorHex'),saveExtractedPaletteBtn=document.getElementById('saveExtractedPaletteBtn');
 let images=[],currentIndex=0,currentPalette=[];
 const workspace=document.getElementById('workspace'),mainViewer=document.getElementById('mainViewer'),palettePanel=document.getElementById('palettePanel'),appVersion=document.getElementById('appVersion'),matchTabBtn=document.getElementById('matchTabBtn'),matchPanel=document.getElementById('matchPanel'),matchOriginThumb=document.getElementById('matchOriginThumb'),matchOriginName=document.getElementById('matchOriginName'),matchSelectedDot=document.getElementById('matchSelectedDot'),matchSelectedHex=document.getElementById('matchSelectedHex'),matchCount=document.getElementById('matchCount'),matchEmpty=document.getElementById('matchEmpty'),matchContent=document.getElementById('matchContent'),matchPrevBtn=document.getElementById('matchPrevBtn'),matchNextBtn=document.getElementById('matchNextBtn'),matchCounter=document.getElementById('matchCounter'),matchCanvas=document.getElementById('matchCanvas'),matchCtx=matchCanvas.getContext('2d',{willReadFrequently:true}),matchScore=document.getElementById('matchScore'),matchThumbs=document.getElementById('matchThumbs'),matchPaletteStrip=document.getElementById('matchPaletteStrip'),matchColorList=document.getElementById('matchColorList');
 let matchResults=[],matchIndex=0,matchSearchTimer=null;
@@ -826,34 +813,31 @@ function showCopyToast(){
 
 function activatePaletteTab(tab){
   const showExtracted=tab==='extracted';
-  const showSuggested=tab==='suggested';
   const showMatch=tab==='match';
 
   extractedTabBtn.classList.toggle('active',showExtracted);
-  suggestedTabBtn.classList.toggle('active',showSuggested);
   matchTabBtn.classList.toggle('active',showMatch);
 
   extractedTabBtn.setAttribute('aria-selected',String(showExtracted));
-  suggestedTabBtn.setAttribute('aria-selected',String(showSuggested));
   matchTabBtn.setAttribute('aria-selected',String(showMatch));
 
   extractedPanel.hidden=!showExtracted;
-  suggestedPanel.hidden=!showSuggested;
   matchPanel.hidden=!showMatch;
 
-  // Ao abrir Match, remove completamente o visualizador principal
-  // e faz o painel Match ocupar toda a largura disponível.
   workspace.classList.toggle('match-mode',showMatch);
 
   if(showMatch){
     const originImage=images[currentIndex];
+
     if(originImage){
       matchOriginThumb.src=originImage.url;
       matchOriginThumb.alt=originImage.name||'Imagem de origem';
       matchOriginName.textContent=originImage.name||'Imagem selecionada';
     }
+
     matchTabBtn.classList.remove('alert');
     renderCurrentMatch();
+
     window.scrollTo({
       top:workspace.getBoundingClientRect().top+window.scrollY-16,
       behavior:'smooth'
@@ -861,7 +845,6 @@ function activatePaletteTab(tab){
   }
 }
 extractedTabBtn.addEventListener('click',()=>activatePaletteTab('extracted'));
-suggestedTabBtn.addEventListener('click',()=>activatePaletteTab('suggested'));
 matchTabBtn.addEventListener('click',()=>{if(!matchTabBtn.disabled)activatePaletteTab('match');});
 
 baseColorPicker.addEventListener('input',()=>{
@@ -873,7 +856,6 @@ baseColorPicker.addEventListener('input',()=>{
   matchSearchTimer=setTimeout(()=>searchPresetMatches(hex),320);
 });
 baseColorPicker.addEventListener('change',()=>searchPresetMatches(baseColorPicker.value.toUpperCase()));
-generateSuggestionsBtn.addEventListener('click',generateSuggestedPalettes);
 
 
 
@@ -1185,403 +1167,6 @@ function roundedRectPath(context,x,y,width,height,radius){
   context.arcTo(x,y+height,x,y,r);
   context.arcTo(x,y,x+width,y,r);
   context.closePath();
-}
-
-
-function generateSuggestedPalettes(){
-  const baseHex=baseColorPicker.value.toUpperCase();
-  baseColorHex.textContent=baseHex;
-
-  const base=hexToRgb(baseHex);
-  const [h,s,l]=rgbToHsl(base.r,base.g,base.b);
-
-  const references=(currentPalette||[]).filter(c=>!c.fallback);
-  const accent=findImageAccent(references,base);
-  const accentHex=accent?.hex||hslToHex(h+45,78,52);
-
-  const isNeutral=s<15;
-
-  const palettes=isNeutral
-    ?buildNeutralFashionPalettes(baseHex,l,references,accentHex)
-    :buildChromaticFashionPalettes(baseHex,h,s,l,references,accentHex);
-
-  renderSuggestedPalettes(palettes);
-  suggestedEmpty.hidden=true;
-  suggestedPalettes.hidden=false;
-}
-
-function buildChromaticFashionPalettes(baseHex,h,s,l,references,accentHex){
-  return[
-    {
-      name:'Monocromática',
-      badge:'Minimalista • Elegante • Quiet Luxury',
-      description:'Mantém o mesmo matiz e varia luminosidade e saturação para criar profundidade sem perder unidade visual.',
-      colors:[
-        hslToHex(h,Math.max(18,s*.35),clamp(l+34,76,95)),
-        hslToHex(h,Math.max(30,s*.58),clamp(l+18,56,88)),
-        baseHex,
-        hslToHex(h,Math.max(42,s*.82),clamp(l-14,18,64)),
-        hslToHex(h,Math.max(28,s*.54),clamp(l-32,7,42))
-      ]
-    },
-    {
-      name:'Análoga',
-      badge:'Romântico • Boho • Criativo suave',
-      description:'Usa matizes vizinhos no círculo cromático em intervalos controlados de 15° e 30°.',
-      colors:[
-        hslToHex(h-30,Math.max(34,s*.76),clamp(l+8,18,86)),
-        hslToHex(h-15,Math.max(38,s*.88),clamp(l+4,16,82)),
-        baseHex,
-        hslToHex(h+15,Math.max(38,s*.86),clamp(l-3,14,76)),
-        hslToHex(h+30,Math.max(32,s*.70),clamp(l-10,10,68))
-      ]
-    },
-    {
-      name:'Complementar',
-      badge:'Streetwear • Pop • Sporty',
-      description:'Combina a cor base com a oposta em 180°, equilibrada por variações tonais e um neutro de apoio.',
-      colors:[
-        hslToHex(h,Math.max(18,s*.30),clamp(l+30,72,94)),
-        hslToHex(h,Math.max(34,s*.66),clamp(l+10,28,82)),
-        baseHex,
-        hslToHex(h+180,Math.max(52,s*.90),clamp(l,20,72)),
-        hslToHex(h+180,Math.max(20,s*.36),clamp(l-24,8,46))
-      ]
-    },
-    {
-      name:'Triádica',
-      badge:'Kidcore • Retrô • Dopamine Dressing',
-      description:'Aplica três matizes equidistantes em 120°, com controle de saturação para manter equilíbrio visual.',
-      colors:[
-        hslToHex(h,Math.max(18,s*.34),clamp(l+28,70,92)),
-        baseHex,
-        hslToHex(h+120,Math.max(48,s*.78),clamp(l+2,18,74)),
-        hslToHex(h+240,Math.max(48,s*.76),clamp(l-4,14,68)),
-        hslToHex(h+240,Math.max(16,s*.28),clamp(l-26,7,44))
-      ]
-    },
-    {
-      name:'Moda 60-30-10',
-      badge:'Composição baseada na imagem',
-      description:'Organiza uma cor dominante, uma secundária e um acento visual, usando a imagem atual como referência cromática.',
-      colors:buildFashion603010(baseHex,references,accentHex,false)
-    }
-  ];
-}
-
-function buildNeutralFashionPalettes(baseHex,l,references,accentHex){
-  const baseGray=hexToRgb(baseHex);
-  const warmNeutral=findWarmNeutral(references);
-  const warmHex=warmNeutral?.hex||'#C2A47A';
-
-  return[
-    {
-      name:'Monocromática neutra',
-      badge:'Minimalista • Elegante • Quiet Luxury',
-      description:'Varia apenas luminosidade e profundidade do neutro selecionado, sem introduzir novas famílias cromáticas.',
-      colors:[
-        grayHex(clamp(l+42,88,98)),
-        grayHex(clamp(l+24,70,90)),
-        baseHex,
-        grayHex(clamp(l-18,18,56)),
-        grayHex(clamp(l-36,5,32))
-      ]
-    },
-    {
-      name:'Acromática',
-      badge:'Casual • Urbano • Rock',
-      description:'Usa exclusivamente branco, cinzas e preto para destacar corte, textura e silhueta.',
-      colors:[
-        '#F5F5F3',
-        '#C9CBCB',
-        baseHex,
-        '#5B5D60',
-        '#151515'
-      ]
-    },
-    {
-      name:'Neutros com acento da imagem',
-      badge:'Versátil • Contemporânea',
-      description:'Mantém uma base neutra e incorpora o principal acento cromático detectado na fotografia.',
-      colors:[
-        '#EEEAE2',
-        baseHex,
-        '#70757A',
-        accentHex,
-        darkenHex(accentHex,34)
-      ]
-    },
-    {
-      name:'Quiet Luxury',
-      badge:'Sofisticação discreta',
-      description:'Combina neutros refinados, areia, camel, marfim e grafite com baixa saturação.',
-      colors:[
-        '#F1ECE3',
-        '#D8C7AE',
-        warmHex,
-        baseHex,
-        '#2A2B2C'
-      ]
-    },
-    {
-      name:'Urbano 60-30-10',
-      badge:'Base neutra + ponto de cor',
-      description:'Estrutura 60% neutro dominante, 30% neutro secundário e 10% acento cromático retirado da imagem.',
-      colors:buildFashion603010(baseHex,references,accentHex,true)
-    }
-  ];
-}
-
-function buildFashion603010(baseHex,references,accentHex,isNeutral){
-  const light=[...references].sort((a,b)=>b.l-a.l).find(c=>c.l<96);
-  const dark=[...references].sort((a,b)=>a.l-b.l).find(c=>c.l>4);
-  const dominant=[...references].sort((a,b)=>dominantScore(b)-dominantScore(a))[0];
-
-  const lightHex=light?.hex||(isNeutral?'#E8E5DE':lightenHex(baseHex,30));
-  const darkHex=dark?.hex||(isNeutral?'#242526':darkenHex(baseHex,32));
-  const secondaryHex=dominant?.hex||lightenHex(baseHex,12);
-
-  return[
-    lightHex,
-    baseHex,
-    secondaryHex,
-    accentHex,
-    darkHex
-  ];
-}
-
-function findImageAccent(references,base){
-  if(!references.length)return null;
-
-  const baseHsl=rgbToHsl(base.r,base.g,base.b);
-  const baseIsNeutral=baseHsl[1]<15;
-
-  return [...references]
-    .map(color=>{
-      const colorHsl=rgbToHsl(color.r,color.g,color.b);
-      const saturation=colorHsl[1]/100;
-      const usefulLightness=1-Math.abs(colorHsl[2]-52)/52;
-      const frequency=Math.log1p(color.count||1);
-      const hueContrast=baseIsNeutral
-        ?0
-        :circularHueDistance(baseHsl[0],colorHsl[0])/180;
-
-      const score=
-        saturation*4.6+
-        usefulLightness*1.4+
-        hueContrast*.5+
-        frequency*.04;
-
-      return{color,score};
-    })
-    .filter(item=>item.color.s>=24&&item.color.l>=12&&item.color.l<=86)
-    .sort((a,b)=>b.score-a.score)[0]?.color||null;
-}
-
-function findWarmNeutral(references){
-  return [...references]
-    .filter(c=>c.s>=10&&c.s<=55&&c.h>=20&&c.h<=55&&c.l>=28&&c.l<=82)
-    .sort((a,b)=>dominantScore(b)-dominantScore(a))[0]||null;
-}
-
-function grayHex(lightness){
-  return hslToHex(0,0,clamp(lightness,0,100));
-}
-
-function lightenHex(hex,amount){
-  const rgb=hexToRgb(hex);
-  const [h,s,l]=rgbToHsl(rgb.r,rgb.g,rgb.b);
-  return hslToHex(h,s,clamp(l+amount,0,100));
-}
-
-function darkenHex(hex,amount){
-  const rgb=hexToRgb(hex);
-  const [h,s,l]=rgbToHsl(rgb.r,rgb.g,rgb.b);
-  return hslToHex(h,s,clamp(l-amount,0,100));
-}
-
-function renderSuggestedPalettes(palettes){
-  suggestedPalettes.innerHTML='';
-
-  palettes.forEach((palette,index)=>{
-    const card=document.createElement('article');
-    card.className='suggested-card';
-
-    const title=document.createElement('h3');
-    title.textContent=palette.name;
-
-    const badge=document.createElement('span');
-    badge.className='palette-badge';
-    badge.textContent=palette.badge;
-
-    const description=document.createElement('p');
-    description.textContent=palette.description;
-
-    const strip=document.createElement('div');
-    strip.className='suggested-strip';
-
-    palette.colors.forEach(hex=>{
-      const swatch=document.createElement('button');
-      swatch.type='button';
-      swatch.className='suggested-color';
-      swatch.style.background=hex;
-      swatch.title=`Copiar ${hex}`;
-      swatch.setAttribute('aria-label',`Copiar cor ${hex}`);
-      swatch.innerHTML=`<span class="suggested-hex">${hex}</span>`;
-      swatch.addEventListener('click',()=>copyText(hex));
-      strip.appendChild(swatch);
-    });
-
-    const actions=document.createElement('div');
-    actions.className='suggested-actions';
-
-    const save=document.createElement('button');
-    save.type='button';
-    save.className='btn';
-    save.textContent='Salvar paleta';
-    save.addEventListener('click',()=>downloadSuggestedPalette(palette,index));
-    actions.appendChild(save);
-
-    card.append(title,badge,description,strip,actions);
-    suggestedPalettes.appendChild(card);
-  });
-}
-
-function downloadSuggestedPalette(palette,index){
-  const width=1400;
-  const height=520;
-  const exportCanvas=document.createElement('canvas');
-  exportCanvas.width=width;
-  exportCanvas.height=height;
-  const exportCtx=exportCanvas.getContext('2d');
-
-  exportCtx.fillStyle='#FFFFFF';
-  exportCtx.fillRect(0,0,width,height);
-
-  exportCtx.fillStyle='#141824';
-  exportCtx.font='700 46px system-ui, sans-serif';
-  exportCtx.fillText(palette.name,70,78);
-
-  exportCtx.fillStyle='#596275';
-  exportCtx.font='26px system-ui, sans-serif';
-  wrapCanvasText(exportCtx,palette.description,70,122,width-140,34);
-
-  const top=210;
-  const swatchWidth=(width-140)/palette.colors.length;
-  const swatchHeight=210;
-
-  palette.colors.forEach((hex,i)=>{
-    const x=70+i*swatchWidth;
-    exportCtx.fillStyle=hex;
-    exportCtx.fillRect(x,top,swatchWidth,swatchHeight);
-
-    exportCtx.fillStyle=idealTextColor(hex);
-    exportCtx.font='700 25px system-ui, sans-serif';
-    exportCtx.textAlign='center';
-    exportCtx.fillText(hex,x+swatchWidth/2,top+swatchHeight-28);
-  });
-
-  exportCtx.textAlign='left';
-  exportCtx.fillStyle='#596275';
-  exportCtx.font='22px system-ui, sans-serif';
-  exportCtx.fillText('Color Harmony • Desenvolvido por Carlos M. Kill',70,474);
-
-  const link=document.createElement('a');
-  link.download=`paleta-${slugify(palette.name)}-${index+1}.png`;
-  link.href=exportCanvas.toDataURL('image/png');
-  link.click();
-}
-
-function wrapCanvasText(context,text,x,y,maxWidth,lineHeight){
-  const words=text.split(' ');
-  let line='';
-  let currentY=y;
-
-  for(const word of words){
-    const test=`${line}${word} `;
-    if(context.measureText(test).width>maxWidth&&line){
-      context.fillText(line.trim(),x,currentY);
-      line=`${word} `;
-      currentY+=lineHeight;
-    }else{
-      line=test;
-    }
-  }
-  if(line)context.fillText(line.trim(),x,currentY);
-}
-
-function idealTextColor(hex){
-  const {r,g,b}=hexToRgb(hex);
-  const luminance=(.299*r+.587*g+.114*b)/255;
-  return luminance>.62?'#141824':'#FFFFFF';
-}
-
-function slugify(text){
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g,'')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g,'-')
-    .replace(/(^-|-$)/g,'');
-}
-
-
-function findNearestPaletteColor(target,references){
-  let nearest=null;
-  let best=Infinity;
-
-  references.forEach(color=>{
-    const distance=rgbDistanceSquared(target,color);
-    if(distance<best){
-      best=distance;
-      nearest=color;
-    }
-  });
-
-  return nearest;
-}
-
-function hexToRgb(hex){
-  const clean=hex.replace('#','');
-  const value=parseInt(clean,16);
-  return{
-    r:(value>>16)&255,
-    g:(value>>8)&255,
-    b:value&255
-  };
-}
-
-function hslToHex(h,s,l){
-  h=((h%360)+360)%360;
-  s=clamp(s,0,100)/100;
-  l=clamp(l,0,100)/100;
-
-  const c=(1-Math.abs(2*l-1))*s;
-  const x=c*(1-Math.abs((h/60)%2-1));
-  const m=l-c/2;
-  let r=0,g=0,b=0;
-
-  if(h<60){r=c;g=x}
-  else if(h<120){r=x;g=c}
-  else if(h<180){g=c;b=x}
-  else if(h<240){g=x;b=c}
-  else if(h<300){r=x;b=c}
-  else{r=c;b=x}
-
-  return rgbToHex(
-    Math.round((r+m)*255),
-    Math.round((g+m)*255),
-    Math.round((b+m)*255)
-  );
-}
-
-function circularHueDistance(a,b){
-  const diff=Math.abs(a-b)%360;
-  return Math.min(diff,360-diff);
-}
-
-function clamp(value,min,max){
-  return Math.min(max,Math.max(min,value));
 }
 
 
