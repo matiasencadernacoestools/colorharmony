@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.png">
 <link rel="apple-touch-icon" href="icone.png">
-<title>Laboratório de Presets de Cores</title>
+<title>Color Harmony v11 — Laboratório de Presets de Cores</title>
 <style>
 :root{--bg:#f5f6fa;--card:#fff;--text:#141824;--muted:#596275;--border:#d8deea;--accent:#d4a017;--shadow:0 18px 45px rgba(20,24,36,.08)}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text)}
@@ -119,6 +119,18 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
   .workspace.match-mode .match-image-wrap{min-height:320px}
 }
 
+
+.version-badge{display:inline-flex;align-items:center;justify-content:center;margin:10px auto 0;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--muted);font-size:.78rem;font-weight:900}
+.match-origin{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;margin:0 0 14px;padding:12px;border:1px solid var(--border);border-radius:16px;background:#fbfcff}
+.match-origin-thumb{width:92px;height:92px;object-fit:cover;border-radius:14px;border:3px solid var(--accent);background:#eef1f7}
+.match-origin-meta{display:grid;gap:4px}
+.match-origin-meta strong{font-size:.95rem}
+.match-origin-meta span{color:var(--muted);font-size:.84rem;word-break:break-word}
+@media(max-width:560px){
+  .match-origin{grid-template-columns:72px 1fr}
+  .match-origin-thumb{width:72px;height:72px}
+}
+
 </style>
 </head>
 <body>
@@ -127,6 +139,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <img class="brand-logo" src="LOGO_HC.png" alt="Color Harmony" decoding="async" fetchpriority="high">
 <h1>Laboratório de Presets de Cores</h1>
 <p class="subtitle">Carregue várias imagens, navegue entre elas e extraia automaticamente uma paleta de 8 cores predominantes, com HEX copiável e download em PNG.</p>
+<div class="version-badge" id="appVersion">Versão 11</div>
 </header>
 <main>
 <section class="card controls">
@@ -187,6 +200,16 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 
   <section class="tab-panel" id="matchPanel" role="tabpanel" aria-labelledby="matchTabBtn" hidden>
     <h2 style="margin:0">Match</h2>
+
+    <div class="match-origin">
+      <img id="matchOriginThumb" class="match-origin-thumb" alt="Imagem usada para selecionar a cor">
+      <div class="match-origin-meta">
+        <strong>Imagem de origem</strong>
+        <span id="matchOriginName">Nenhuma imagem selecionada.</span>
+        <span>A cor procurada foi escolhida a partir desta imagem.</span>
+      </div>
+    </div>
+
     <div class="match-summary">
       <span class="match-selected"><span id="matchSelectedDot" class="match-selected-dot"></span>Cor selecionada: <strong id="matchSelectedHex">—</strong></span>
       <span id="matchCount" class="small">Nenhuma correspondência analisada.</span>
@@ -233,7 +256,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <script>
 const input=document.getElementById('imageInput'),fileStatus=document.getElementById('fileStatus'),canvas=document.getElementById('previewCanvas'),ctx=canvas.getContext('2d',{willReadFrequently:true}),imageWrap=document.getElementById('imageWrap'),thumbs=document.getElementById('thumbs'),counter=document.getElementById('counter'),prevBtn=document.getElementById('prevBtn'),nextBtn=document.getElementById('nextBtn'),paletteStrip=document.getElementById('paletteStrip'),colorList=document.getElementById('colorList'),analysisText=document.getElementById('analysisText'),copyAllBtn=document.getElementById('copyAllBtn'),downloadBtn=document.getElementById('downloadBtn'),modeSelect=document.getElementById('modeSelect'),progressBar=document.getElementById('progressBar'),presetStatus=document.getElementById('presetStatus'),copyToast=document.getElementById('copyToast'),installBtn=document.getElementById('installBtn'),installModal=document.getElementById('installModal'),installHelp=document.getElementById('installHelp'),closeInstallBtn=document.getElementById('closeInstallBtn'),confirmInstallBtn=document.getElementById('confirmInstallBtn'),extractedTabBtn=document.getElementById('extractedTabBtn'),suggestedTabBtn=document.getElementById('suggestedTabBtn'),extractedPanel=document.getElementById('extractedPanel'),suggestedPanel=document.getElementById('suggestedPanel'),baseColorPicker=document.getElementById('baseColorPicker'),baseColorHex=document.getElementById('baseColorHex'),generateSuggestionsBtn=document.getElementById('generateSuggestionsBtn'),suggestedEmpty=document.getElementById('suggestedEmpty'),suggestedPalettes=document.getElementById('suggestedPalettes'),saveExtractedPaletteBtn=document.getElementById('saveExtractedPaletteBtn');
 let images=[],currentIndex=0,currentPalette=[];
-const workspace=document.getElementById('workspace'),mainViewer=document.getElementById('mainViewer'),palettePanel=document.getElementById('palettePanel'),matchTabBtn=document.getElementById('matchTabBtn'),matchPanel=document.getElementById('matchPanel'),matchSelectedDot=document.getElementById('matchSelectedDot'),matchSelectedHex=document.getElementById('matchSelectedHex'),matchCount=document.getElementById('matchCount'),matchEmpty=document.getElementById('matchEmpty'),matchContent=document.getElementById('matchContent'),matchPrevBtn=document.getElementById('matchPrevBtn'),matchNextBtn=document.getElementById('matchNextBtn'),matchCounter=document.getElementById('matchCounter'),matchCanvas=document.getElementById('matchCanvas'),matchCtx=matchCanvas.getContext('2d',{willReadFrequently:true}),matchScore=document.getElementById('matchScore'),matchThumbs=document.getElementById('matchThumbs'),matchPaletteStrip=document.getElementById('matchPaletteStrip'),matchColorList=document.getElementById('matchColorList');
+const workspace=document.getElementById('workspace'),mainViewer=document.getElementById('mainViewer'),palettePanel=document.getElementById('palettePanel'),appVersion=document.getElementById('appVersion'),matchTabBtn=document.getElementById('matchTabBtn'),matchPanel=document.getElementById('matchPanel'),matchOriginThumb=document.getElementById('matchOriginThumb'),matchOriginName=document.getElementById('matchOriginName'),matchSelectedDot=document.getElementById('matchSelectedDot'),matchSelectedHex=document.getElementById('matchSelectedHex'),matchCount=document.getElementById('matchCount'),matchEmpty=document.getElementById('matchEmpty'),matchContent=document.getElementById('matchContent'),matchPrevBtn=document.getElementById('matchPrevBtn'),matchNextBtn=document.getElementById('matchNextBtn'),matchCounter=document.getElementById('matchCounter'),matchCanvas=document.getElementById('matchCanvas'),matchCtx=matchCanvas.getContext('2d',{willReadFrequently:true}),matchScore=document.getElementById('matchScore'),matchThumbs=document.getElementById('matchThumbs'),matchPaletteStrip=document.getElementById('matchPaletteStrip'),matchColorList=document.getElementById('matchColorList');
 let matchResults=[],matchIndex=0,matchSearchTimer=null;
 const presetColorCache=new Map(),MATCH_THRESHOLD=.95;
 
@@ -782,6 +805,12 @@ function activatePaletteTab(tab){
   workspace.classList.toggle('match-mode',showMatch);
 
   if(showMatch){
+    const originImage=images[currentIndex];
+    if(originImage){
+      matchOriginThumb.src=originImage.url;
+      matchOriginThumb.alt=originImage.name||'Imagem de origem';
+      matchOriginName.textContent=originImage.name||'Imagem selecionada';
+    }
     matchTabBtn.classList.remove('alert');
     renderCurrentMatch();
     window.scrollTo({
@@ -812,6 +841,16 @@ matchPrevBtn.addEventListener('click',async()=>{if(!matchResults.length)return;m
 matchNextBtn.addEventListener('click',async()=>{if(!matchResults.length)return;matchIndex=(matchIndex+1)%matchResults.length;await renderCurrentMatch();});
 
 async function searchPresetMatches(selectedHex){
+  const originImage=images[currentIndex];
+  if(originImage){
+    matchOriginThumb.src=originImage.url;
+    matchOriginThumb.alt=originImage.name||'Imagem de origem';
+    matchOriginName.textContent=originImage.name||'Imagem selecionada';
+  }else{
+    matchOriginThumb.removeAttribute('src');
+    matchOriginName.textContent='Nenhuma imagem selecionada.';
+  }
+
   const presets=images.filter(image=>image.source==='github');
   matchSelectedHex.textContent=selectedHex;
   matchSelectedDot.style.background=selectedHex;
