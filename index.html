@@ -30,7 +30,7 @@ input[type=file]{display:none}.file-btn,.btn,select{border:1px solid var(--borde
 .thumb-remove{position:absolute;top:-7px;right:-7px;width:23px;height:23px;border:2px solid #fff;border-radius:50%;background:#141824;color:#fff;font-size:14px;font-weight:900;line-height:17px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.24);z-index:2}
 .thumb-remove:hover{background:#b42318}
 .thumb-remove:focus-visible{outline:3px solid rgba(212,160,23,.35);outline-offset:2px}
-.palette-panel{display:grid;gap:14px}.palette-strip{display:grid;grid-template-columns:repeat(8,1fr);min-height:300px;overflow:hidden;border-radius:18px;border:1px solid var(--border)}
+.palette-panel{display:grid;gap:14px}.extracted-actions{display:flex;justify-content:flex-end}.palette-strip{display:grid;grid-template-columns:repeat(8,1fr);min-height:300px;overflow:hidden;border-radius:18px;border:1px solid var(--border)}
 @media(max-width:760px){.palette-strip{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:440px){.palette-strip{grid-template-columns:repeat(2,1fr)}}
 .swatch{position:relative;min-height:250px;border-right:2px solid rgba(255,255,255,.75)}
@@ -54,6 +54,30 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
   .install-btn{top:16px;right:16px}
   .install-options{grid-template-columns:1fr}
 }
+
+
+.tabs{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:10px}
+.tab-btn{border:1px solid var(--border);background:#fff;color:var(--muted);border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer}
+.tab-btn.active{background:#fff7db;border-color:#e6c65a;color:var(--text)}
+.tab-panel[hidden]{display:none}
+.suggested-controls{display:grid;grid-template-columns:1fr;gap:12px;padding:14px;border:1px solid var(--border);border-radius:16px;background:#fbfcff}
+@media(min-width:700px){.suggested-controls{grid-template-columns:auto 1fr auto;align-items:end}}
+.color-picker-field{display:grid;gap:7px;font-weight:900}
+.color-picker-wrap{display:flex;align-items:center;gap:10px}
+#baseColorPicker{width:64px;height:48px;padding:3px;border:1px solid var(--border);border-radius:12px;background:#fff;cursor:pointer}
+#baseColorHex{font-weight:900;min-width:84px}
+.suggested-empty{border:1px dashed var(--border);border-radius:16px;padding:28px 18px;text-align:center;color:var(--muted);background:#fbfcff}
+.suggested-palettes{display:grid;gap:14px}
+.suggested-card{border:1px solid var(--border);border-radius:18px;padding:14px;background:#fff}
+.suggested-card h3{margin:0 0 4px}
+.suggested-card p{margin:0 0 12px;color:var(--muted);font-size:.9rem}
+.suggested-strip{display:grid;grid-template-columns:repeat(5,1fr);min-height:108px;border-radius:14px;overflow:hidden;border:1px solid var(--border)}
+.suggested-color{position:relative;min-height:108px;cursor:pointer}
+.suggested-hex{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(255,255,255,.86);color:#111827;border-radius:999px;padding:7px 8px;text-align:center;font-size:.78rem;font-weight:900}
+.suggested-actions{display:flex;justify-content:flex-end;margin-top:10px}
+.palette-badge{display:inline-flex;align-items:center;gap:6px;margin:0 0 10px;padding:6px 10px;border-radius:999px;background:#f5f6fa;color:var(--muted);font-size:.78rem;font-weight:900}
+.palette-badge::before{content:'✦'}
+@media(max-width:560px){.suggested-strip{grid-template-columns:repeat(5,minmax(70px,1fr));overflow:auto}.suggested-color{min-width:70px}}
 
 </style>
 </head>
@@ -80,7 +104,51 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 </section>
 <section class="workspace">
 <div class="card viewer"><div class="nav"><button class="btn" id="prevBtn">◀ Anterior</button><strong id="counter">Imagem 0 de 0</strong><button class="btn" id="nextBtn">Próxima ▶</button></div><div class="image-wrap" id="imageWrap"><div class="empty">Carregue imagens para iniciar o teste.</div><canvas id="previewCanvas" hidden></canvas></div><div class="thumbs" id="thumbs"></div></div>
-<div class="card palette-panel"><h2 style="margin:0">Paleta extraída</h2><div id="analysisText" class="small">Aguardando imagem.</div><div class="palette-strip" id="paletteStrip"></div><div class="color-list" id="colorList"></div></div>
+
+<div class="card palette-panel">
+  <div class="tabs" role="tablist" aria-label="Paletas">
+    <button class="tab-btn active" id="extractedTabBtn" type="button" role="tab" aria-selected="true" aria-controls="extractedPanel">Paleta extraída</button>
+    <button class="tab-btn" id="suggestedTabBtn" type="button" role="tab" aria-selected="false" aria-controls="suggestedPanel">Paletas sugeridas</button>
+  </div>
+
+  <section class="tab-panel" id="extractedPanel" role="tabpanel" aria-labelledby="extractedTabBtn">
+    <h2 style="margin:0">Paleta extraída</h2>
+    <div id="analysisText" class="small">Aguardando imagem.</div>
+    <div class="palette-strip" id="paletteStrip"></div>
+    <div class="color-list" id="colorList"></div>
+    <div class="extracted-actions">
+      <button class="btn" id="saveExtractedPaletteBtn" type="button">Salvar paleta</button>
+    </div>
+  </section>
+
+  <section class="tab-panel" id="suggestedPanel" role="tabpanel" aria-labelledby="suggestedTabBtn" hidden>
+    <h2 style="margin:0">Paletas sugeridas</h2>
+    <p class="small">Selecione uma cor base para gerar combinações tecnicamente coerentes.</p>
+
+    <div class="suggested-controls">
+      <label class="color-picker-field">
+        Seletor de cor
+        <span class="color-picker-wrap">
+          <input id="baseColorPicker" type="color" value="#D4A017" aria-label="Selecionar cor base">
+          <span id="baseColorHex">#D4A017</span>
+        </span>
+      </label>
+
+      <div class="small">
+        As sugestões combinam teoria das cores, contraste, luminosidade, saturação e os acentos cromáticos encontrados na imagem atual.
+      </div>
+
+      <button class="btn" id="generateSuggestionsBtn" type="button">Gerar paletas</button>
+    </div>
+
+    <div id="suggestedEmpty" class="suggested-empty">
+      Use o seletor de cores para gerarmos uma paleta de cores.
+    </div>
+
+    <div id="suggestedPalettes" class="suggested-palettes" hidden></div>
+  </section>
+</div>
+
 </section>
 </main>
 <footer>Desenvolvido por Carlos M. Kill</footer>
@@ -104,7 +172,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
   </section>
 </div>
 <script>
-const input=document.getElementById('imageInput'),fileStatus=document.getElementById('fileStatus'),canvas=document.getElementById('previewCanvas'),ctx=canvas.getContext('2d',{willReadFrequently:true}),imageWrap=document.getElementById('imageWrap'),thumbs=document.getElementById('thumbs'),counter=document.getElementById('counter'),prevBtn=document.getElementById('prevBtn'),nextBtn=document.getElementById('nextBtn'),paletteStrip=document.getElementById('paletteStrip'),colorList=document.getElementById('colorList'),analysisText=document.getElementById('analysisText'),copyAllBtn=document.getElementById('copyAllBtn'),downloadBtn=document.getElementById('downloadBtn'),modeSelect=document.getElementById('modeSelect'),progressBar=document.getElementById('progressBar'),presetStatus=document.getElementById('presetStatus'),copyToast=document.getElementById('copyToast'),installBtn=document.getElementById('installBtn'),installModal=document.getElementById('installModal'),installHelp=document.getElementById('installHelp'),closeInstallBtn=document.getElementById('closeInstallBtn'),confirmInstallBtn=document.getElementById('confirmInstallBtn');
+const input=document.getElementById('imageInput'),fileStatus=document.getElementById('fileStatus'),canvas=document.getElementById('previewCanvas'),ctx=canvas.getContext('2d',{willReadFrequently:true}),imageWrap=document.getElementById('imageWrap'),thumbs=document.getElementById('thumbs'),counter=document.getElementById('counter'),prevBtn=document.getElementById('prevBtn'),nextBtn=document.getElementById('nextBtn'),paletteStrip=document.getElementById('paletteStrip'),colorList=document.getElementById('colorList'),analysisText=document.getElementById('analysisText'),copyAllBtn=document.getElementById('copyAllBtn'),downloadBtn=document.getElementById('downloadBtn'),modeSelect=document.getElementById('modeSelect'),progressBar=document.getElementById('progressBar'),presetStatus=document.getElementById('presetStatus'),copyToast=document.getElementById('copyToast'),installBtn=document.getElementById('installBtn'),installModal=document.getElementById('installModal'),installHelp=document.getElementById('installHelp'),closeInstallBtn=document.getElementById('closeInstallBtn'),confirmInstallBtn=document.getElementById('confirmInstallBtn'),extractedTabBtn=document.getElementById('extractedTabBtn'),suggestedTabBtn=document.getElementById('suggestedTabBtn'),extractedPanel=document.getElementById('extractedPanel'),suggestedPanel=document.getElementById('suggestedPanel'),baseColorPicker=document.getElementById('baseColorPicker'),baseColorHex=document.getElementById('baseColorHex'),generateSuggestionsBtn=document.getElementById('generateSuggestionsBtn'),suggestedEmpty=document.getElementById('suggestedEmpty'),suggestedPalettes=document.getElementById('suggestedPalettes'),saveExtractedPaletteBtn=document.getElementById('saveExtractedPaletteBtn');
 let images=[],currentIndex=0,currentPalette=[];
 
 /*
@@ -551,6 +619,462 @@ function showCopyToast(){
   clearTimeout(showCopyToast.timer);
   showCopyToast.timer=setTimeout(()=>copyToast.classList.remove('show'),1800);
 }
+
+
+function activatePaletteTab(tab){
+  const showExtracted=tab==='extracted';
+  extractedTabBtn.classList.toggle('active',showExtracted);
+  suggestedTabBtn.classList.toggle('active',!showExtracted);
+  extractedTabBtn.setAttribute('aria-selected',String(showExtracted));
+  suggestedTabBtn.setAttribute('aria-selected',String(!showExtracted));
+  extractedPanel.hidden=!showExtracted;
+  suggestedPanel.hidden=showExtracted;
+}
+
+extractedTabBtn.addEventListener('click',()=>activatePaletteTab('extracted'));
+suggestedTabBtn.addEventListener('click',()=>activatePaletteTab('suggested'));
+
+baseColorPicker.addEventListener('input',()=>{
+  baseColorHex.textContent=baseColorPicker.value.toUpperCase();
+});
+
+baseColorPicker.addEventListener('change',generateSuggestedPalettes);
+generateSuggestionsBtn.addEventListener('click',generateSuggestedPalettes);
+
+
+
+saveExtractedPaletteBtn.addEventListener('click',downloadExtractedPalette);
+
+function downloadExtractedPalette(){
+  const palette=(currentPalette||[]).filter(color=>!color.fallback).slice(0,8);
+
+  if(!palette.length){
+    analysisText.textContent='Nenhuma paleta disponível para salvar.';
+    return;
+  }
+
+  const width=1400;
+  const height=980;
+  const exportCanvas=document.createElement('canvas');
+  exportCanvas.width=width;
+  exportCanvas.height=height;
+  const exportCtx=exportCanvas.getContext('2d');
+
+  exportCtx.fillStyle='#FFFFFF';
+  exportCtx.fillRect(0,0,width,height);
+
+  exportCtx.fillStyle='#141824';
+  exportCtx.font='700 52px system-ui, sans-serif';
+  exportCtx.fillText('Paleta extraída',70,82);
+
+  const imageName=images[currentIndex]?.name||'Imagem';
+  exportCtx.fillStyle='#596275';
+  exportCtx.font='24px system-ui, sans-serif';
+  exportCtx.fillText(imageName,70,122);
+
+  const stripX=70;
+  const stripY=170;
+  const stripWidth=width-140;
+  const stripHeight=420;
+  const swatchWidth=stripWidth/palette.length;
+
+  exportCtx.save();
+  roundedRectPath(exportCtx,stripX,stripY,stripWidth,stripHeight,28);
+  exportCtx.clip();
+
+  palette.forEach((color,index)=>{
+    exportCtx.fillStyle=color.hex;
+    exportCtx.fillRect(
+      stripX+index*swatchWidth,
+      stripY,
+      swatchWidth+1,
+      stripHeight
+    );
+  });
+
+  exportCtx.restore();
+
+  exportCtx.strokeStyle='#D8DEEA';
+  exportCtx.lineWidth=2;
+  roundedRectPath(exportCtx,stripX,stripY,stripWidth,stripHeight,28);
+  exportCtx.stroke();
+
+  const cardsTop=650;
+  const cols=4;
+  const gap=24;
+  const cardWidth=(stripWidth-gap*(cols-1))/cols;
+  const cardHeight=105;
+
+  palette.forEach((color,index)=>{
+    const row=Math.floor(index/cols);
+    const col=index%cols;
+    const x=stripX+col*(cardWidth+gap);
+    const y=cardsTop+row*(cardHeight+22);
+
+    exportCtx.fillStyle='#FFFFFF';
+    exportCtx.strokeStyle='#D8DEEA';
+    exportCtx.lineWidth=2;
+    roundedRectPath(exportCtx,x,y,cardWidth,cardHeight,18);
+    exportCtx.fill();
+    exportCtx.stroke();
+
+    exportCtx.fillStyle=color.hex;
+    roundedRectPath(exportCtx,x+18,y+18,54,54,12);
+    exportCtx.fill();
+
+    exportCtx.fillStyle='#141824';
+    exportCtx.font='700 24px system-ui, sans-serif';
+    exportCtx.fillText(`Cor ${index+1}`,x+92,y+42);
+
+    exportCtx.font='700 22px system-ui, sans-serif';
+    exportCtx.fillText(color.hex,x+92,y+73);
+  });
+
+  exportCtx.fillStyle='#596275';
+  exportCtx.font='22px system-ui, sans-serif';
+  exportCtx.fillText('Color Harmony • Desenvolvido por Carlos M. Kill',70,940);
+
+  const link=document.createElement('a');
+  link.download=`paleta-extraida-${slugify(imageName)}.png`;
+  link.href=exportCanvas.toDataURL('image/png');
+  link.click();
+}
+
+function roundedRectPath(context,x,y,width,height,radius){
+  const r=Math.min(radius,width/2,height/2);
+  context.beginPath();
+  context.moveTo(x+r,y);
+  context.arcTo(x+width,y,x+width,y+height,r);
+  context.arcTo(x+width,y+height,x,y+height,r);
+  context.arcTo(x,y+height,x,y,r);
+  context.arcTo(x,y,x+width,y,r);
+  context.closePath();
+}
+
+function generateSuggestedPalettes(){
+  const baseHex=baseColorPicker.value.toUpperCase();
+  baseColorHex.textContent=baseHex;
+
+  const base=hexToRgb(baseHex);
+  const [h,s,l]=rgbToHsl(base.r,base.g,base.b);
+
+  const references=(currentPalette||[]).filter(c=>!c.fallback);
+  const imageAccent=findImageAccent(references,base);
+  const accentHex=imageAccent?.hex||hslToHex(h+48,72,52);
+  const accentRgb=hexToRgb(accentHex);
+  const [ah,as,al]=rgbToHsl(accentRgb.r,accentRgb.g,accentRgb.b);
+
+  const neutralBase=s<18;
+
+  const palettes=[
+    {
+      name:'Análoga refinada',
+      badge:'Harmonia suave',
+      description:'Matizes vizinhos com variação controlada de luz e saturação para manter unidade visual.',
+      colors:[
+        hslToHex(h-32,Math.max(24,s*.72),clamp(l+16,20,90)),
+        hslToHex(h-14,Math.max(30,s*.88),clamp(l+7,16,84)),
+        baseHex,
+        hslToHex(h+16,Math.max(30,s*.86),clamp(l-5,12,76)),
+        hslToHex(h+34,Math.max(24,s*.68),clamp(l-14,8,66))
+      ]
+    },
+    {
+      name:'Complementar com acento da imagem',
+      badge:'Contraste principal',
+      description:'Mantém a cor selecionada como base e incorpora um acento real extraído da imagem para preservar sua identidade visual.',
+      colors:[
+        hslToHex(h,Math.max(12,s*.26),clamp(l+34,74,94)),
+        hslToHex(h,Math.max(20,s*.58),clamp(l+12,24,84)),
+        baseHex,
+        accentHex,
+        hslToHex(ah,Math.max(28,as*.58),clamp(al-26,8,48))
+      ]
+    },
+    {
+      name:'Complementar dividida',
+      badge:'Contraste equilibrado',
+      description:'Usa dois matizes próximos ao complementar, produzindo contraste forte com menor agressividade visual.',
+      colors:[
+        hslToHex(h,Math.max(16,s*.36),clamp(l+28,68,92)),
+        baseHex,
+        hslToHex(h+150,Math.max(54,s*.82),clamp(l+4,22,76)),
+        hslToHex(h+210,Math.max(52,s*.78),clamp(l-2,16,70)),
+        hslToHex(h+180,Math.max(18,s*.34),clamp(l-24,8,48))
+      ]
+    },
+    {
+      name:'Tríade editorial',
+      badge:'Equilíbrio em 120°',
+      description:'Distribui três famílias cromáticas em intervalos de 120°, com saturação moderada para uso editorial e digital.',
+      colors:[
+        hslToHex(h,Math.max(18,s*.38),clamp(l+30,70,93)),
+        baseHex,
+        hslToHex(h+120,Math.max(48,s*.74),clamp(l+3,18,76)),
+        hslToHex(h+240,Math.max(46,s*.70),clamp(l-5,14,68)),
+        hslToHex(h+240,Math.max(16,s*.30),clamp(l-26,7,46))
+      ]
+    },
+    {
+      name:'Paleta fotográfica expandida',
+      badge:'Baseada na imagem',
+      description:'Cruza a cor selecionada com os tons predominantes e com o principal acento cromático da fotografia.',
+      colors:buildPhotographicPalette(baseHex,references,accentHex,neutralBase)
+    }
+  ];
+
+  renderSuggestedPalettes(palettes);
+  suggestedEmpty.hidden=true;
+  suggestedPalettes.hidden=false;
+}
+
+function findImageAccent(references,base){
+  if(!references.length)return null;
+
+  const baseHsl=rgbToHsl(base.r,base.g,base.b);
+
+  return [...references]
+    .map(color=>{
+      const colorHsl=rgbToHsl(color.r,color.g,color.b);
+      const hueContrast=circularHueDistance(baseHsl[0],colorHsl[0])/180;
+      const saturation=colorHsl[1]/100;
+      const usefulLightness=1-Math.abs(colorHsl[2]-52)/52;
+      const frequency=Math.log1p(color.count||1);
+      const score=
+        saturation*3.2+
+        usefulLightness*1.1+
+        hueContrast*.8+
+        frequency*.08;
+      return{color,score};
+    })
+    .sort((a,b)=>b.score-a.score)[0]?.color||null;
+}
+
+function buildPhotographicPalette(baseHex,references,accentHex,neutralBase){
+  if(!references.length){
+    const base=hexToRgb(baseHex);
+    const [h,s,l]=rgbToHsl(base.r,base.g,base.b);
+    return[
+      hslToHex(h,Math.max(12,s*.25),clamp(l+34,74,94)),
+      baseHex,
+      accentHex,
+      hslToHex(h+90,48,48),
+      hslToHex(h,Math.max(10,s*.20),clamp(l-30,6,42))
+    ];
+  }
+
+  const sorted=[...references].sort((a,b)=>dominantScore(b)-dominantScore(a));
+  const vivid=[...references].sort((a,b)=>b.s-a.s);
+  const light=[...references].sort((a,b)=>b.l-a.l);
+  const dark=[...references].sort((a,b)=>a.l-b.l);
+
+  const candidates=[
+    light.find(c=>c.l<96)?.hex,
+    neutralBase?sorted[0]?.hex:baseHex,
+    accentHex,
+    vivid.find(c=>c.hex!==accentHex)?.hex,
+    dark.find(c=>c.l>4)?.hex
+  ].filter(Boolean);
+
+  const result=[];
+  for(const hex of candidates){
+    if(!result.some(existing=>rgbDistanceSquared(hexToRgb(existing),hexToRgb(hex))<900)){
+      result.push(hex);
+    }
+  }
+
+  while(result.length<5){
+    const fallback=sorted.find(c=>!result.includes(c.hex));
+    result.push(fallback?.hex||baseHex);
+  }
+
+  return result.slice(0,5);
+}
+
+function renderSuggestedPalettes(palettes){
+  suggestedPalettes.innerHTML='';
+
+  palettes.forEach((palette,index)=>{
+    const card=document.createElement('article');
+    card.className='suggested-card';
+
+    const title=document.createElement('h3');
+    title.textContent=palette.name;
+
+    const badge=document.createElement('span');
+    badge.className='palette-badge';
+    badge.textContent=palette.badge;
+
+    const description=document.createElement('p');
+    description.textContent=palette.description;
+
+    const strip=document.createElement('div');
+    strip.className='suggested-strip';
+
+    palette.colors.forEach(hex=>{
+      const swatch=document.createElement('button');
+      swatch.type='button';
+      swatch.className='suggested-color';
+      swatch.style.background=hex;
+      swatch.title=`Copiar ${hex}`;
+      swatch.setAttribute('aria-label',`Copiar cor ${hex}`);
+      swatch.innerHTML=`<span class="suggested-hex">${hex}</span>`;
+      swatch.addEventListener('click',()=>copyText(hex));
+      strip.appendChild(swatch);
+    });
+
+    const actions=document.createElement('div');
+    actions.className='suggested-actions';
+
+    const save=document.createElement('button');
+    save.type='button';
+    save.className='btn';
+    save.textContent='Salvar paleta';
+    save.addEventListener('click',()=>downloadSuggestedPalette(palette,index));
+    actions.appendChild(save);
+
+    card.append(title,badge,description,strip,actions);
+    suggestedPalettes.appendChild(card);
+  });
+}
+
+function downloadSuggestedPalette(palette,index){
+  const width=1400;
+  const height=520;
+  const exportCanvas=document.createElement('canvas');
+  exportCanvas.width=width;
+  exportCanvas.height=height;
+  const exportCtx=exportCanvas.getContext('2d');
+
+  exportCtx.fillStyle='#FFFFFF';
+  exportCtx.fillRect(0,0,width,height);
+
+  exportCtx.fillStyle='#141824';
+  exportCtx.font='700 46px system-ui, sans-serif';
+  exportCtx.fillText(palette.name,70,78);
+
+  exportCtx.fillStyle='#596275';
+  exportCtx.font='26px system-ui, sans-serif';
+  wrapCanvasText(exportCtx,palette.description,70,122,width-140,34);
+
+  const top=210;
+  const swatchWidth=(width-140)/palette.colors.length;
+  const swatchHeight=210;
+
+  palette.colors.forEach((hex,i)=>{
+    const x=70+i*swatchWidth;
+    exportCtx.fillStyle=hex;
+    exportCtx.fillRect(x,top,swatchWidth,swatchHeight);
+
+    exportCtx.fillStyle=idealTextColor(hex);
+    exportCtx.font='700 25px system-ui, sans-serif';
+    exportCtx.textAlign='center';
+    exportCtx.fillText(hex,x+swatchWidth/2,top+swatchHeight-28);
+  });
+
+  exportCtx.textAlign='left';
+  exportCtx.fillStyle='#596275';
+  exportCtx.font='22px system-ui, sans-serif';
+  exportCtx.fillText('Color Harmony • Desenvolvido por Carlos M. Kill',70,474);
+
+  const link=document.createElement('a');
+  link.download=`paleta-${slugify(palette.name)}-${index+1}.png`;
+  link.href=exportCanvas.toDataURL('image/png');
+  link.click();
+}
+
+function wrapCanvasText(context,text,x,y,maxWidth,lineHeight){
+  const words=text.split(' ');
+  let line='';
+  let currentY=y;
+
+  for(const word of words){
+    const test=`${line}${word} `;
+    if(context.measureText(test).width>maxWidth&&line){
+      context.fillText(line.trim(),x,currentY);
+      line=`${word} `;
+      currentY+=lineHeight;
+    }else{
+      line=test;
+    }
+  }
+  if(line)context.fillText(line.trim(),x,currentY);
+}
+
+function idealTextColor(hex){
+  const {r,g,b}=hexToRgb(hex);
+  const luminance=(.299*r+.587*g+.114*b)/255;
+  return luminance>.62?'#141824':'#FFFFFF';
+}
+
+function slugify(text){
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/(^-|-$)/g,'');
+}
+
+
+function findNearestPaletteColor(target,references){
+  let nearest=null;
+  let best=Infinity;
+
+  references.forEach(color=>{
+    const distance=rgbDistanceSquared(target,color);
+    if(distance<best){
+      best=distance;
+      nearest=color;
+    }
+  });
+
+  return nearest;
+}
+
+function hexToRgb(hex){
+  const clean=hex.replace('#','');
+  const value=parseInt(clean,16);
+  return{
+    r:(value>>16)&255,
+    g:(value>>8)&255,
+    b:value&255
+  };
+}
+
+function hslToHex(h,s,l){
+  h=((h%360)+360)%360;
+  s=clamp(s,0,100)/100;
+  l=clamp(l,0,100)/100;
+
+  const c=(1-Math.abs(2*l-1))*s;
+  const x=c*(1-Math.abs((h/60)%2-1));
+  const m=l-c/2;
+  let r=0,g=0,b=0;
+
+  if(h<60){r=c;g=x}
+  else if(h<120){r=x;g=c}
+  else if(h<180){g=c;b=x}
+  else if(h<240){g=x;b=c}
+  else if(h<300){r=x;b=c}
+  else{r=c;b=x}
+
+  return rgbToHex(
+    Math.round((r+m)*255),
+    Math.round((g+m)*255),
+    Math.round((b+m)*255)
+  );
+}
+
+function circularHueDistance(a,b){
+  const diff=Math.abs(a-b)%360;
+  return Math.min(diff,360-diff);
+}
+
+function clamp(value,min,max){
+  return Math.min(max,Math.max(min,value));
+}
+
 
 let deferredInstallPrompt=null;
 let selectedInstallPlatform='';
