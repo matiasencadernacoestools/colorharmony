@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.png">
 <link rel="apple-touch-icon" href="icone.png">
-<title>Color Harmony v23 — Laboratório de Presets de Cores</title>
+<title>Color Harmony v24 — Laboratório de Presets de Cores</title>
 <style>
 :root{--bg:#f5f6fa;--card:#fff;--text:#141824;--muted:#596275;--border:#d8deea;--accent:#d4a017;--shadow:0 18px 45px rgba(20,24,36,.08)}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text)}
@@ -180,7 +180,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <img class="brand-logo" src="LOGO_HC.png" alt="Color Harmony" decoding="async" fetchpriority="high">
 <h1>Laboratório de Presets de Cores</h1>
 <p class="subtitle">Carregue várias imagens, navegue entre elas e extraia automaticamente uma paleta de 8 cores predominantes, com HEX copiável e download em PNG.</p>
-<div class="version-badge" id="appVersion">Versão 23</div>
+<div class="version-badge" id="appVersion">Versão 24</div>
 </header>
 <main>
 <section class="card controls">
@@ -310,7 +310,7 @@ async function loadPresetImages(){
   presetStatus.textContent='Carregando presets...';
   progressBar.style.width='35%';
 
-  const CACHE_KEY='colorHarmonyPresetListV23';
+  const CACHE_KEY='colorHarmonyPresetListV24';
 
   try{
     let presetNames=[];
@@ -1058,7 +1058,7 @@ async function searchPresetMatches(selectedHex){
     matchTabBtn.disabled=false;
     matchTabBtn.classList.remove('alert');
     matchCount.textContent=`Erro no Match: ${error.message||error}`;
-    matchEmpty.textContent='Confirme se preset-color-index.json foi gerado pelo GitHub Actions.';
+    matchEmpty.textContent='A comparação foi interrompida por um erro interno. Consulte a mensagem acima.';
     matchEmpty.hidden=false;
     matchContent.hidden=true;
   }
@@ -1208,6 +1208,11 @@ function classifyMatchQuality(deltaE){
   if(deltaE<=12)return 'Forte';
   if(deltaE<=20)return 'Próximo';
   return 'Exploratório';
+}
+
+function circularHueDistance(hueA,hueB){
+  const difference=Math.abs(hueA-hueB)%360;
+  return Math.min(difference,360-difference);
 }
 
 function evaluatePresetMatch(selected,allColors,sameImage=false){
