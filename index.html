@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.png">
 <link rel="apple-touch-icon" href="icone.png">
-<title>Color Harmony v22 — Laboratório de Presets de Cores</title>
+<title>Color Harmony v23 — Laboratório de Presets de Cores</title>
 <style>
 :root{--bg:#f5f6fa;--card:#fff;--text:#141824;--muted:#596275;--border:#d8deea;--accent:#d4a017;--shadow:0 18px 45px rgba(20,24,36,.08)}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text)}
@@ -180,7 +180,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <img class="brand-logo" src="LOGO_HC.png" alt="Color Harmony" decoding="async" fetchpriority="high">
 <h1>Laboratório de Presets de Cores</h1>
 <p class="subtitle">Carregue várias imagens, navegue entre elas e extraia automaticamente uma paleta de 8 cores predominantes, com HEX copiável e download em PNG.</p>
-<div class="version-badge" id="appVersion">Versão 22</div>
+<div class="version-badge" id="appVersion">Versão 23</div>
 </header>
 <main>
 <section class="card controls">
@@ -310,7 +310,7 @@ async function loadPresetImages(){
   presetStatus.textContent='Carregando presets...';
   progressBar.style.width='35%';
 
-  const CACHE_KEY='colorHarmonyPresetListV22';
+  const CACHE_KEY='colorHarmonyPresetListV23';
 
   try{
     let presetNames=[];
@@ -1057,7 +1057,7 @@ async function searchPresetMatches(selectedHex){
     console.error('Erro na busca Match:',error);
     matchTabBtn.disabled=false;
     matchTabBtn.classList.remove('alert');
-    matchCount.textContent='Não foi possível carregar ou consultar o índice cromático.';
+    matchCount.textContent=`Erro no Match: ${error.message||error}`;
     matchEmpty.textContent='Confirme se preset-color-index.json foi gerado pelo GitHub Actions.';
     matchEmpty.hidden=false;
     matchContent.hidden=true;
@@ -1277,6 +1277,113 @@ function evaluatePresetMatch(selected,allColors,sameImage=false){
     similarity:Math.max(0,1-nearestDeltaE/240),
     nearbyShare
   };
+}
+
+
+function rgbToLab(r,g,b){
+  let sr=r/255,sg=g/255,sb=b/255;
+
+  sr=sr>.04045?Math.pow((sr+.055)/1.055,2.4):sr/12.92;
+  sg=sg>.04045?Math.pow((sg+.055)/1.055,2.4):sg/12.92;
+  sb=sb>.04045?Math.pow((sb+.055)/1.055,2.4):sb/12.92;
+
+  let x=(sr*.4124564+sg*.3575761+sb*.1804375)/.95047;
+  let y=(sr*.2126729+sg*.7151522+sb*.0721750);
+  let z=(sr*.0193339+sg*.1191920+sb*.9503041)/1.08883;
+
+  const transform=value=>
+    value>.008856451679
+      ?Math.cbrt(value)
+      :(7.787037037*value)+(16/116);
+
+  x=transform(x);
+  y=transform(y);
+  z=transform(z);
+
+  return{
+    l:(116*y)-16,
+    a:500*(x-y),
+    b:200*(y-z)
+  };
+}
+
+function deltaE2000(lab1,lab2){
+  const L1=lab1.l,a1=lab1.a,b1=lab1.b;
+  const L2=lab2.l,a2=lab2.a,b2=lab2.b;
+  const rad=Math.PI/180;
+  const deg=180/Math.PI;
+
+  const C1=Math.sqrt(a1*a1+b1*b1);
+  const C2=Math.sqrt(a2*a2+b2*b2);
+  const Cbar=(C1+C2)/2;
+  const Cbar7=Math.pow(Cbar,7);
+  const G=.5*(1-Math.sqrt(Cbar7/(Cbar7+Math.pow(25,7))));
+
+  const a1p=(1+G)*a1;
+  const a2p=(1+G)*a2;
+  const C1p=Math.sqrt(a1p*a1p+b1*b1);
+  const C2p=Math.sqrt(a2p*a2p+b2*b2);
+
+  const hp=(x,y)=>{
+    if(x===0&&y===0)return 0;
+    const angle=Math.atan2(y,x)*deg;
+    return angle>=0?angle:angle+360;
+  };
+
+  const h1p=hp(a1p,b1);
+  const h2p=hp(a2p,b2);
+
+  const dLp=L2-L1;
+  const dCp=C2p-C1p;
+
+  let dhp;
+  if(C1p*C2p===0){
+    dhp=0;
+  }else if(Math.abs(h2p-h1p)<=180){
+    dhp=h2p-h1p;
+  }else if(h2p<=h1p){
+    dhp=h2p-h1p+360;
+  }else{
+    dhp=h2p-h1p-360;
+  }
+
+  const dHp=2*Math.sqrt(C1p*C2p)*Math.sin((dhp/2)*rad);
+  const Lbarp=(L1+L2)/2;
+  const Cbarp=(C1p+C2p)/2;
+
+  let hbarp;
+  if(C1p*C2p===0){
+    hbarp=h1p+h2p;
+  }else if(Math.abs(h1p-h2p)<=180){
+    hbarp=(h1p+h2p)/2;
+  }else if(h1p+h2p<360){
+    hbarp=(h1p+h2p+360)/2;
+  }else{
+    hbarp=(h1p+h2p-360)/2;
+  }
+
+  const T=
+    1
+    -.17*Math.cos((hbarp-30)*rad)
+    +.24*Math.cos((2*hbarp)*rad)
+    +.32*Math.cos((3*hbarp+6)*rad)
+    -.20*Math.cos((4*hbarp-63)*rad);
+
+  const deltaTheta=30*Math.exp(-Math.pow((hbarp-275)/25,2));
+  const Rc=2*Math.sqrt(
+    Math.pow(Cbarp,7)/(Math.pow(Cbarp,7)+Math.pow(25,7))
+  );
+
+  const Sl=1+(.015*Math.pow(Lbarp-50,2))/Math.sqrt(20+Math.pow(Lbarp-50,2));
+  const Sc=1+.045*Cbarp;
+  const Sh=1+.015*Cbarp*T;
+  const Rt=-Math.sin((2*deltaTheta)*rad)*Rc;
+
+  const l=dLp/Sl;
+  const c=dCp/Sc;
+  const h=dHp/Sh;
+
+  return Math.sqrt(l*l+c*c+h*h+Rt*c*h);
 }
 
 function colorSimilarity(a,b){
