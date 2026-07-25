@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.png">
 <link rel="apple-touch-icon" href="icone.png">
-<title>Color Harmony v24 — Laboratório de Presets de Cores</title>
+<title>Color Harmony v25 — Laboratório de Presets de Cores</title>
 <style>
 :root{--bg:#f5f6fa;--card:#fff;--text:#141824;--muted:#596275;--border:#d8deea;--accent:#d4a017;--shadow:0 18px 45px rgba(20,24,36,.08)}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text)}
@@ -70,6 +70,9 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 .color-picker-wrap{display:flex;align-items:center;gap:10px}
 #baseColorPicker{width:64px;height:48px;padding:3px;border:1px solid var(--border);border-radius:12px;background:#fff;cursor:pointer}
 #baseColorHex{font-weight:900;min-width:84px}
+#previewCanvas{cursor:crosshair;touch-action:pan-y}
+.image-color-hint{margin-top:8px;font-weight:800;color:var(--text)}
+.image-color-hint::before{content:'◉ ';color:#d4a017}
 .suggested-empty{border:1px dashed var(--border);border-radius:16px;padding:28px 18px;text-align:center;color:var(--muted);background:#fbfcff}
 .suggested-palettes{display:grid;gap:14px}
 .suggested-card{border:1px solid var(--border);border-radius:18px;padding:14px;background:#fff}
@@ -180,7 +183,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <img class="brand-logo" src="LOGO_HC.png" alt="Color Harmony" decoding="async" fetchpriority="high">
 <h1>Laboratório de Presets de Cores</h1>
 <p class="subtitle">Carregue várias imagens, navegue entre elas e extraia automaticamente uma paleta de 8 cores predominantes, com HEX copiável e download em PNG.</p>
-<div class="version-badge" id="appVersion">Versão 24</div>
+<div class="version-badge" id="appVersion">Versão 25</div>
 </header>
 <main>
 <section class="card controls">
@@ -216,7 +219,10 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
           <span id="baseColorHex">#D4A017</span>
         </span>
       </label>
-      <div class="small">Escolha uma cor para procurar imagens PRESETS com ranking perceptual dos PRESETS pela proximidade da cor selecionada. O seletor é utilizado para localizar correspondências na aba Match.</div>
+      <div>
+        <div class="small">Escolha uma cor para procurar imagens PRESETS com ranking perceptual pela proximidade da cor selecionada.</div>
+        <div class="small image-color-hint">Toque em uma cor na imagem para capturá-la.</div>
+      </div>
     </div>
     <div class="palette-strip" id="paletteStrip"></div>
     <div class="color-list" id="colorList"></div>
@@ -310,7 +316,7 @@ async function loadPresetImages(){
   presetStatus.textContent='Carregando presets...';
   progressBar.style.width='35%';
 
-  const CACHE_KEY='colorHarmonyPresetListV24';
+  const CACHE_KEY='colorHarmonyPresetListV25';
 
   try{
     let presetNames=[];
@@ -493,6 +499,41 @@ let touchTracking=false;
 const SWIPE_MIN_DISTANCE=55;
 const SWIPE_MAX_VERTICAL=80;
 const SWIPE_DIRECTION_RATIO=1.25;
+
+
+function captureColorFromPreview(event){
+  if(canvas.hidden||!canvas.width||!canvas.height)return;
+
+  const rect=canvas.getBoundingClientRect();
+  const scaleX=canvas.width/rect.width;
+  const scaleY=canvas.height/rect.height;
+
+  const x=Math.max(0,Math.min(
+    canvas.width-1,
+    Math.floor((event.clientX-rect.left)*scaleX)
+  ));
+  const y=Math.max(0,Math.min(
+    canvas.height-1,
+    Math.floor((event.clientY-rect.top)*scaleY)
+  ));
+
+  const pixel=ctx.getImageData(x,y,1,1).data;
+  if(pixel[3]===0)return;
+
+  const selectedHex=rgbToHex(pixel[0],pixel[1],pixel[2]).toUpperCase();
+
+  baseColorPicker.value=selectedHex;
+  baseColorHex.textContent=selectedHex;
+  clearTimeout(matchSearchTimer);
+
+  if(navigator.vibrate){
+    navigator.vibrate(18);
+  }
+
+  searchPresetMatches(selectedHex);
+}
+
+canvas.addEventListener('click',captureColorFromPreview);
 
 imageWrap.addEventListener('touchstart',event=>{
   if(!images.length||event.touches.length!==1)return;
