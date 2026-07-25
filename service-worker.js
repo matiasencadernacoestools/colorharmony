@@ -1,4 +1,4 @@
-const CACHE_NAME='color-harmony-v18';
+const CACHE_NAME='color-harmony-v19';
 const APP_SHELL=[
   './',
   './index.html',
