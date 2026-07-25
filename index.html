@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.png">
 <link rel="apple-touch-icon" href="icone.png">
-<title>Color Harmony v19 — Laboratório de Presets de Cores</title>
+<title>Color Harmony v20 — Laboratório de Presets de Cores</title>
 <style>
 :root{--bg:#f5f6fa;--card:#fff;--text:#141824;--muted:#596275;--border:#d8deea;--accent:#d4a017;--shadow:0 18px 45px rgba(20,24,36,.08)}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text)}
@@ -180,7 +180,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <img class="brand-logo" src="LOGO_HC.png" alt="Color Harmony" decoding="async" fetchpriority="high">
 <h1>Laboratório de Presets de Cores</h1>
 <p class="subtitle">Carregue várias imagens, navegue entre elas e extraia automaticamente uma paleta de 8 cores predominantes, com HEX copiável e download em PNG.</p>
-<div class="version-badge" id="appVersion">Versão 19</div>
+<div class="version-badge" id="appVersion">Versão 20</div>
 </header>
 <main>
 <section class="card controls">
@@ -216,7 +216,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
           <span id="baseColorHex">#D4A017</span>
         </span>
       </label>
-      <div class="small">Escolha uma cor para procurar imagens PRESETS com Match perceptual calculado sobre todas as cores amostradas da imagem. O seletor é utilizado para localizar correspondências na aba Match.</div>
+      <div class="small">Escolha uma cor para procurar imagens PRESETS com Match perceptual calculado sobre todas as cores amostradas. Imagens idênticas são reconhecidas por assinatura visual. O seletor é utilizado para localizar correspondências na aba Match.</div>
     </div>
     <div class="palette-strip" id="paletteStrip"></div>
     <div class="color-list" id="colorList"></div>
@@ -310,7 +310,7 @@ async function loadPresetImages(){
   presetStatus.textContent='Carregando presets...';
   progressBar.style.width='35%';
 
-  const CACHE_KEY='colorHarmonyPresetListV19';
+  const CACHE_KEY='colorHarmonyPresetListV20';
 
   try{
     let presetNames=[];
@@ -933,6 +933,9 @@ async function searchPresetMatches(selectedHex){
     }
 
     const presets=images.filter(image=>image.source==='github');
+    const originProfile=originImage
+      ?await analyzeImageColorProfile(originImage.url)
+      :null;
 
     matchSelectedHex.textContent=selectedHex;
     matchSelectedDot.style.background=selectedHex;
@@ -961,7 +964,16 @@ async function searchPresetMatches(selectedHex){
 
       try{
         const profile=await getPresetColorProfile(preset);
-        const match=evaluatePresetMatch(selected,profile.allColors);
+        const fingerprintDistance=originProfile
+          ?fingerprintDifference(originProfile.fingerprint,profile.fingerprint)
+          :Infinity;
+        const sameImage=fingerprintDistance<=2.5;
+
+        const match=evaluatePresetMatch(
+          selected,
+          profile.allColors,
+          sameImage
+        );
 
         if(match.valid){
           results.push({
@@ -970,7 +982,9 @@ async function searchPresetMatches(selectedHex){
             matchedColor:match.color,
             similarity:match.similarity,
             deltaE:match.deltaE,
-            share:match.nearbyShare
+            share:match.nearbyShare,
+            sameImage,
+            fingerprintDistance
           });
         }
       }catch(error){
@@ -981,6 +995,7 @@ async function searchPresetMatches(selectedHex){
     if(searchToken!==matchSearchToken)return;
 
     results.sort((a,b)=>{
+      if(a.sameImage!==b.sameImage)return Number(b.sameImage)-Number(a.sameImage);
       const scoreA=a.similarity+(a.share*.35);
       const scoreB=b.similarity+(b.share*.35);
       return scoreB-scoreA;
@@ -1104,7 +1119,8 @@ function analyzeImageColorProfile(url){
 
       resolve({
         allColors,
-        displayPalette
+        displayPalette,
+        fingerprint:createImageFingerprint(tempCtx,temp.width,temp.height)
       });
     };
 
@@ -1113,7 +1129,43 @@ function analyzeImageColorProfile(url){
   });
 }
 
-function evaluatePresetMatch(selected,allColors){
+
+function createImageFingerprint(context,width,height){
+  const size=16;
+  const sample=document.createElement('canvas');
+  sample.width=size;
+  sample.height=size;
+  const sampleCtx=sample.getContext('2d',{willReadFrequently:true});
+
+  sampleCtx.drawImage(context.canvas,0,0,width,height,0,0,size,size);
+  const data=sampleCtx.getImageData(0,0,size,size).data;
+  const values=[];
+
+  for(let i=0;i<data.length;i+=4){
+    // luminância + crominância simplificada
+    const r=data[i],g=data[i+1],b=data[i+2];
+    values.push(
+      Math.round((r+g+b)/3),
+      Math.round(r-g),
+      Math.round(b-g)
+    );
+  }
+
+  return values;
+}
+
+function fingerprintDifference(a,b){
+  if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length)return Infinity;
+
+  let total=0;
+  for(let i=0;i<a.length;i++){
+    total+=Math.abs(a[i]-b[i]);
+  }
+
+  return total/a.length;
+}
+
+function evaluatePresetMatch(selected,allColors,sameImage=false){
   let nearest=null;
   let nearestDeltaE=Infinity;
   let nearbyShare=0;
@@ -1156,7 +1208,12 @@ function evaluatePresetMatch(selected,allColors){
 
   let valid;
 
-  if(selectedNeutral){
+  if(sameImage){
+    // Se a imagem carregada é visualmente idêntica a um PRESET,
+    // a correspondência deve ser aceite. A cor destacada será
+    // sempre a cor amostrada mais próxima dentro desse PRESET.
+    valid=nearestDeltaE<=18;
+  }else if(selectedNeutral){
     valid=(
       nearestNeutral &&
       lightnessGap<=18 &&
@@ -1235,7 +1292,7 @@ async function renderCurrentMatch(){
   if(!matchResults.length)return;
   const result=matchResults[matchIndex];
   matchCounter.textContent=`Imagem ${matchIndex+1} de ${matchResults.length}`;
-  matchScore.textContent=`${result.image.name} • Similaridade: ${(result.similarity*100).toFixed(1)}% • ΔE ${result.deltaE.toFixed(2)} • Presença acumulada da família de cor: ${(result.share*100).toFixed(2)}% • Cor encontrada: ${result.matchedColor.hex}`;
+  matchScore.textContent=`${result.image.name} • ${result.sameImage?'IMAGEM IDÊNTICA • ':''}Similaridade: ${(result.similarity*100).toFixed(1)}% • ΔE ${result.deltaE.toFixed(2)} • Presença acumulada da família de cor: ${(result.share*100).toFixed(2)}% • Cor encontrada: ${result.matchedColor.hex}`;
   await drawMatchImage(result.image.url);
   renderMatchThumbs();
   renderMatchPalette(result.palette,result.matchedColor.hex);
