@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.png">
 <link rel="apple-touch-icon" href="icone.png">
-<title>Color Harmony v16 — Laboratório de Presets de Cores</title>
+<title>Color Harmony v17 — Laboratório de Presets de Cores</title>
 <style>
 :root{--bg:#f5f6fa;--card:#fff;--text:#141824;--muted:#596275;--border:#d8deea;--accent:#d4a017;--shadow:0 18px 45px rgba(20,24,36,.08)}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text)}
@@ -180,7 +180,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <img class="brand-logo" src="LOGO_HC.png" alt="Color Harmony" decoding="async" fetchpriority="high">
 <h1>Laboratório de Presets de Cores</h1>
 <p class="subtitle">Carregue várias imagens, navegue entre elas e extraia automaticamente uma paleta de 8 cores predominantes, com HEX copiável e download em PNG.</p>
-<div class="version-badge" id="appVersion">Versão 16</div>
+<div class="version-badge" id="appVersion">Versão 17</div>
 </header>
 <main>
 <section class="card controls">
@@ -310,48 +310,99 @@ async function loadPresetImages(){
   presetStatus.textContent='Carregando presets...';
   progressBar.style.width='35%';
 
+  const CACHE_KEY='colorHarmonyPresetListV17';
+
   try{
-    const {owner,repo,branch,folder}=PRESETS_CONFIG;
-    const apiUrl=`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(folder)}?ref=${encodeURIComponent(branch)}`;
+    let presetNames=[];
+    let sourceLabel='presets.json';
 
-    const response=await fetch(apiUrl,{
-      headers:{Accept:'application/vnd.github+json'}
-    });
+    // Fonte principal: ficheiro estático servido pelo GitHub Pages.
+    // Não consome a API e não possui o limite de 60 pedidos por hora.
+    try{
+      const staticResponse=await fetch(`./presets.json?v=${Date.now()}`,{
+        cache:'no-store'
+      });
 
-    if(!response.ok){
-      throw new Error(`GitHub respondeu ${response.status}`);
+      if(!staticResponse.ok){
+        throw new Error(`presets.json respondeu ${staticResponse.status}`);
+      }
+
+      const staticData=await staticResponse.json();
+      const list=Array.isArray(staticData)?staticData:staticData.files;
+
+      if(!Array.isArray(list)){
+        throw new Error('presets.json não contém uma lista válida.');
+      }
+
+      presetNames=list
+        .map(item=>typeof item==='string'?item:item?.name)
+        .filter(name=>typeof name==='string'&&IMAGE_EXTENSIONS.test(name));
+
+      localStorage.setItem(CACHE_KEY,JSON.stringify(presetNames));
+    }catch(staticError){
+      console.warn('Falha ao carregar presets.json:',staticError);
+
+      // Segunda opção: última lista válida guardada no dispositivo.
+      const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||'[]');
+
+      if(Array.isArray(cached)&&cached.length){
+        presetNames=cached;
+        sourceLabel='cache local';
+      }else{
+        // Última opção: API do GitHub. Só é chamada quando não existe
+        // presets.json nem cache local.
+        const {owner,repo,branch,folder}=PRESETS_CONFIG;
+        const apiUrl=`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(folder)}?ref=${encodeURIComponent(branch)}`;
+
+        const apiResponse=await fetch(apiUrl,{
+          headers:{Accept:'application/vnd.github+json'}
+        });
+
+        if(!apiResponse.ok){
+          throw new Error(`GitHub API respondeu ${apiResponse.status}`);
+        }
+
+        const apiFiles=await apiResponse.json();
+
+        if(!Array.isArray(apiFiles)){
+          throw new Error('A resposta da API não é uma lista.');
+        }
+
+        presetNames=apiFiles
+          .filter(item=>item.type==='file'&&IMAGE_EXTENSIONS.test(item.name))
+          .map(item=>item.name);
+
+        localStorage.setItem(CACHE_KEY,JSON.stringify(presetNames));
+        sourceLabel='API do GitHub';
+      }
     }
 
-    const files=await response.json();
-
-    if(!Array.isArray(files)){
-      throw new Error('A resposta da pasta PRESETS não é uma lista.');
-    }
-
-    images=files
-      .filter(item=>item.type==='file'&&IMAGE_EXTENSIONS.test(item.name))
-      .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{numeric:true,sensitivity:'base'}))
-      .map(item=>({
-        name:item.name,
-        url:item.download_url,
+    images=presetNames
+      .sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true,sensitivity:'base'}))
+      .map(name=>({
+        name,
+        url:`./${PRESETS_CONFIG.folder}/${encodeURIComponent(name)}`,
         source:'github'
       }));
 
     currentIndex=0;
     updateImageStatus();
-    if(!images.length)presetStatus.textContent='Nenhuma imagem encontrada em PRESETS';
+
+    presetStatus.textContent=images.length
+      ?`${images.length} preset(s) disponível(is) • fonte: ${sourceLabel}`
+      :'Nenhuma imagem encontrada em PRESETS';
 
     renderThumbs();
 
     if(images.length){
       await loadCurrentImage();
     }else{
-      showEmptyState('A pasta PRESETS existe, mas não contém imagens compatíveis.');
+      showEmptyState('O ficheiro presets.json não contém imagens compatíveis.');
     }
   }catch(error){
     console.error('Falha ao carregar presets:',error);
-    presetStatus.textContent='Não foi possível carregar os presets automaticamente';
-    showEmptyState('Envie a pasta PRESETS ao GitHub ou use “Escolher imagens” como alternativa.');
+    presetStatus.textContent='Não foi possível carregar a lista de presets';
+    showEmptyState('Verifique se presets.json está publicado na raiz do projeto.');
   }finally{
     progressBar.style.width='100%';
     setTimeout(()=>progressBar.style.width='0',350);
