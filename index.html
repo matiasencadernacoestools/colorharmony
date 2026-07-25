@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.png">
 <link rel="apple-touch-icon" href="icone.png">
-<title>Color Harmony v14 — Laboratório de Presets de Cores</title>
+<title>Color Harmony v15 — Laboratório de Presets de Cores</title>
 <style>
 :root{--bg:#f5f6fa;--card:#fff;--text:#141824;--muted:#596275;--border:#d8deea;--accent:#d4a017;--shadow:0 18px 45px rgba(20,24,36,.08)}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text)}
@@ -180,7 +180,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <img class="brand-logo" src="LOGO_HC.png" alt="Color Harmony" decoding="async" fetchpriority="high">
 <h1>Laboratório de Presets de Cores</h1>
 <p class="subtitle">Carregue várias imagens, navegue entre elas e extraia automaticamente uma paleta de 8 cores predominantes, com HEX copiável e download em PNG.</p>
-<div class="version-badge" id="appVersion">Versão 14</div>
+<div class="version-badge" id="appVersion">Versão 15</div>
 </header>
 <main>
 <section class="card controls">
@@ -216,7 +216,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
           <span id="baseColorHex">#D4A017</span>
         </span>
       </label>
-      <div class="small">Escolha uma cor para procurar imagens PRESETS com pelo menos 95% de similaridade cromática. O seletor é utilizado para localizar correspondências na aba Match.</div>
+      <div class="small">Escolha uma cor para procurar imagens PRESETS com pelo menos 95% de similaridade perceptual. O seletor é utilizado para localizar correspondências na aba Match.</div>
     </div>
     <div class="palette-strip" id="paletteStrip"></div>
     <div class="color-list" id="colorList"></div>
@@ -896,10 +896,27 @@ async function searchPresetMatches(selectedHex){
       const palette=await getPresetDominantPalette(preset);
       let best=null;
       for(const color of palette){
-        const similarity=colorSimilarity(selected,color);
-        if(!best||similarity>best.similarity)best={color,similarity};
+        const result=colorSimilarity(selected,color);
+        const valid=passesPerceptualRules(selected,color,result.deltaE);
+
+        if(valid&&(!best||result.similarity>best.similarity)){
+          best={
+            color,
+            similarity:result.similarity,
+            deltaE:result.deltaE
+          };
+        }
       }
-      if(best&&best.similarity>=MATCH_THRESHOLD)results.push({image:preset,palette,matchedColor:best.color,similarity:best.similarity});
+
+      if(best&&best.similarity>=MATCH_THRESHOLD){
+        results.push({
+          image:preset,
+          palette,
+          matchedColor:best.color,
+          similarity:best.similarity,
+          deltaE:best.deltaE
+        });
+      }
     }catch(error){console.warn('Falha ao analisar preset:',preset.name,error);}
   }
 
@@ -909,7 +926,7 @@ async function searchPresetMatches(selectedHex){
   if(results.length){
     matchTabBtn.disabled=false;
     matchTabBtn.classList.add('alert');
-    matchCount.textContent=`${results.length} imagem(ns) encontrada(s) com similaridade mínima de 95%.`;
+    matchCount.textContent=`${results.length} imagem(ns) encontrada(s) com similaridade perceptual mínima de 95%.`;
     matchEmpty.hidden=true;
     matchContent.hidden=false;
     await renderCurrentMatch();
@@ -975,16 +992,128 @@ function analyzeImageColors(url,count=12){
 }
 
 function colorSimilarity(a,b){
-  const dr=a.r-b.r,dg=a.g-b.g,db=a.b-b.b;
-  const weighted=Math.sqrt(2*dr*dr+4*dg*dg+3*db*db),maximum=Math.sqrt(9*255*255);
-  return Math.max(0,1-weighted/maximum);
+  const labA=rgbToLab(a.r,a.g,a.b);
+  const labB=rgbToLab(b.r,b.g,b.b);
+  const deltaE=deltaE2000(labA,labB);
+
+  // Similaridade perceptual: ΔE 0 = 100%; ΔE 5 = 95%.
+  return{
+    similarity:Math.max(0,1-deltaE/100),
+    deltaE
+  };
+}
+
+function rgbToLab(r,g,b){
+  let R=r/255,G=g/255,B=b/255;
+
+  R=R>.04045?Math.pow((R+.055)/1.055,2.4):R/12.92;
+  G=G>.04045?Math.pow((G+.055)/1.055,2.4):G/12.92;
+  B=B>.04045?Math.pow((B+.055)/1.055,2.4):B/12.92;
+
+  const X=(R*.4124+G*.3576+B*.1805)/.95047;
+  const Y=(R*.2126+G*.7152+B*.0722)/1.00000;
+  const Z=(R*.0193+G*.1192+B*.9505)/1.08883;
+
+  const f=t=>t>.008856?Math.cbrt(t):(7.787*t)+(16/116);
+  const fx=f(X),fy=f(Y),fz=f(Z);
+
+  return{
+    L:(116*fy)-16,
+    a:500*(fx-fy),
+    b:200*(fy-fz)
+  };
+}
+
+function deltaE2000(lab1,lab2){
+  const L1=lab1.L,a1=lab1.a,b1=lab1.b;
+  const L2=lab2.L,a2=lab2.a,b2=lab2.b;
+
+  const avgLp=(L1+L2)/2;
+  const C1=Math.sqrt(a1*a1+b1*b1);
+  const C2=Math.sqrt(a2*a2+b2*b2);
+  const avgC=(C1+C2)/2;
+
+  const G=.5*(1-Math.sqrt(Math.pow(avgC,7)/(Math.pow(avgC,7)+Math.pow(25,7))));
+  const a1p=(1+G)*a1;
+  const a2p=(1+G)*a2;
+  const C1p=Math.sqrt(a1p*a1p+b1*b1);
+  const C2p=Math.sqrt(a2p*a2p+b2*b2);
+  const avgCp=(C1p+C2p)/2;
+
+  const hp=(x,y)=>{
+    let h=Math.atan2(y,x)*180/Math.PI;
+    return h<0?h+360:h;
+  };
+
+  const h1p=hp(a1p,b1);
+  const h2p=hp(a2p,b2);
+
+  const dLp=L2-L1;
+  const dCp=C2p-C1p;
+
+  let dhp=h2p-h1p;
+  if(C1p*C2p===0)dhp=0;
+  else if(dhp>180)dhp-=360;
+  else if(dhp<-180)dhp+=360;
+
+  const dHp=2*Math.sqrt(C1p*C2p)*Math.sin((dhp/2)*Math.PI/180);
+
+  let avgHp;
+  if(C1p*C2p===0)avgHp=h1p+h2p;
+  else if(Math.abs(h1p-h2p)<=180)avgHp=(h1p+h2p)/2;
+  else if(h1p+h2p<360)avgHp=(h1p+h2p+360)/2;
+  else avgHp=(h1p+h2p-360)/2;
+
+  const T=
+    1
+    -.17*Math.cos((avgHp-30)*Math.PI/180)
+    +.24*Math.cos((2*avgHp)*Math.PI/180)
+    +.32*Math.cos((3*avgHp+6)*Math.PI/180)
+    -.20*Math.cos((4*avgHp-63)*Math.PI/180);
+
+  const dTheta=30*Math.exp(-Math.pow((avgHp-275)/25,2));
+  const Rc=2*Math.sqrt(Math.pow(avgCp,7)/(Math.pow(avgCp,7)+Math.pow(25,7)));
+  const Sl=1+(.015*Math.pow(avgLp-50,2))/Math.sqrt(20+Math.pow(avgLp-50,2));
+  const Sc=1+.045*avgCp;
+  const Sh=1+.015*avgCp*T;
+  const Rt=-Math.sin(2*dTheta*Math.PI/180)*Rc;
+
+  return Math.sqrt(
+    Math.pow(dLp/Sl,2)+
+    Math.pow(dCp/Sc,2)+
+    Math.pow(dHp/Sh,2)+
+    Rt*(dCp/Sc)*(dHp/Sh)
+  );
+}
+
+function passesPerceptualRules(selected,candidate,deltaE){
+  const selectedHsl=rgbToHsl(selected.r,selected.g,selected.b);
+  const candidateHsl=rgbToHsl(candidate.r,candidate.g,candidate.b);
+
+  const selectedNeutral=selectedHsl[1]<15;
+  const candidateNeutral=candidateHsl[1]<18;
+  const lightnessGap=Math.abs(selectedHsl[2]-candidateHsl[2]);
+  const saturationGap=Math.abs(selectedHsl[1]-candidateHsl[1]);
+  const hueGap=circularHueDistance(selectedHsl[0],candidateHsl[0]);
+
+  if(selectedNeutral){
+    return candidateNeutral&&lightnessGap<=10&&deltaE<=5;
+  }
+
+  return(
+    !candidateNeutral&&
+    hueGap<=12&&
+    saturationGap<=18&&
+    lightnessGap<=12&&
+    deltaE<=5
+  );
 }
 
 async function renderCurrentMatch(){
   if(!matchResults.length)return;
   const result=matchResults[matchIndex];
   matchCounter.textContent=`Imagem ${matchIndex+1} de ${matchResults.length}`;
-  matchScore.textContent=`${result.image.name} • Similaridade: ${(result.similarity*100).toFixed(1)}% • Cor encontrada: ${result.matchedColor.hex}`;
+  matchScore.textContent=`${result.image.name} • Similaridade perceptual: ${(result.similarity*100).toFixed(1)}% • ΔE ${result.deltaE.toFixed(2)} • Cor encontrada: ${result.matchedColor.hex}`;
   await drawMatchImage(result.image.url);
   renderMatchThumbs();
   renderMatchPalette(result.palette,result.matchedColor.hex);
