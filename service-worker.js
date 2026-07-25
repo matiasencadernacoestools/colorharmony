@@ -1,9 +1,10 @@
-const CACHE_NAME='color-harmony-v20';
+const CACHE_NAME='color-harmony-v21';
 const APP_SHELL=[
   './',
   './index.html',
   './manifest.json',
   './presets.json',
+  './preset-color-index.json',
   './LOGO_HC.png',
   './icone.png'
 ];

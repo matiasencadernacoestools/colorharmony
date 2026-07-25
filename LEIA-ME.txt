@@ -1,0 +1,24 @@
+# Color Harmony v21 — instalação
+
+Substitua no repositório:
+
+- index.html
+- service-worker.js
+- manifest.json
+- scripts/generate_presets.py
+- .github/workflows/update-presets.yml
+- preset-color-index.json
+
+Mantenha:
+
+- PRESETS/
+- LOGO_HC.png
+- icone.png
+
+Depois do upload, abra GitHub Actions e execute manualmente
+“Atualizar presets e índice cromático” uma vez.
+
+O workflow analisará todas as imagens existentes em PRESETS e atualizará:
+
+- presets.json
+- preset-color-index.json
