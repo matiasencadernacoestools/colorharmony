@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.png">
 <link rel="apple-touch-icon" href="icone.png">
-<title>Color Harmony v17 — Laboratório de Presets de Cores</title>
+<title>Color Harmony v18 — Laboratório de Presets de Cores</title>
 <style>
 :root{--bg:#f5f6fa;--card:#fff;--text:#141824;--muted:#596275;--border:#d8deea;--accent:#d4a017;--shadow:0 18px 45px rgba(20,24,36,.08)}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text)}
@@ -180,7 +180,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
 <img class="brand-logo" src="LOGO_HC.png" alt="Color Harmony" decoding="async" fetchpriority="high">
 <h1>Laboratório de Presets de Cores</h1>
 <p class="subtitle">Carregue várias imagens, navegue entre elas e extraia automaticamente uma paleta de 8 cores predominantes, com HEX copiável e download em PNG.</p>
-<div class="version-badge" id="appVersion">Versão 17</div>
+<div class="version-badge" id="appVersion">Versão 18</div>
 </header>
 <main>
 <section class="card controls">
@@ -216,7 +216,7 @@ footer{max-width:1180px;margin:20px auto 0;padding:20px 18px 28px;text-align:cen
           <span id="baseColorHex">#D4A017</span>
         </span>
       </label>
-      <div class="small">Escolha uma cor para procurar imagens PRESETS com pelo menos 95% de similaridade perceptual recalibrada. O seletor é utilizado para localizar correspondências na aba Match.</div>
+      <div class="small">Escolha uma cor para procurar imagens PRESETS com Match perceptual validado por proximidade e presença da cor. O seletor é utilizado para localizar correspondências na aba Match.</div>
     </div>
     <div class="palette-strip" id="paletteStrip"></div>
     <div class="color-list" id="colorList"></div>
@@ -310,7 +310,7 @@ async function loadPresetImages(){
   presetStatus.textContent='Carregando presets...';
   progressBar.style.width='35%';
 
-  const CACHE_KEY='colorHarmonyPresetListV17';
+  const CACHE_KEY='colorHarmonyPresetListV18';
 
   try{
     let presetNames=[];
@@ -954,7 +954,8 @@ async function searchPresetMatches(selectedHex){
           best={
             color,
             similarity:result.similarity,
-            deltaE:result.deltaE
+            deltaE:result.deltaE,
+            share:color.share||0
           };
         }
       }
@@ -965,24 +966,25 @@ async function searchPresetMatches(selectedHex){
           palette,
           matchedColor:best.color,
           similarity:best.similarity,
-          deltaE:best.deltaE
+          deltaE:best.deltaE,
+          share:best.share
         });
       }
     }catch(error){console.warn('Falha ao analisar preset:',preset.name,error);}
   }
 
-  results.sort((a,b)=>b.similarity-a.similarity);
+  results.sort((a,b)=>(b.similarity+b.share*.25)-(a.similarity+a.share*.25));
   matchResults=results;
 
   if(results.length){
     matchTabBtn.disabled=false;
     matchTabBtn.classList.add('alert');
-    matchCount.textContent=`${results.length} imagem(ns) encontrada(s) com similaridade perceptual recalibrada mínima de 95%.`;
+    matchCount.textContent=`${results.length} imagem(ns) encontrada(s) com Match perceptual validado.`;
     matchEmpty.hidden=true;
     matchContent.hidden=false;
     await renderCurrentMatch();
   }else{
-    matchCount.textContent='Nenhuma imagem PRESET atingiu 95% de similaridade.';
+    matchCount.textContent='Nenhuma imagem PRESET atingiu os critérios de Match perceptual.';
     matchEmpty.textContent='Nenhuma correspondência válida foi encontrada para a cor selecionada.';
     matchEmpty.hidden=false;
     matchContent.hidden=true;
@@ -1000,12 +1002,12 @@ async function searchPresetMatches(selectedHex){
 
 async function getPresetDominantPalette(preset){
   if(presetColorCache.has(preset.url))return presetColorCache.get(preset.url);
-  const palette=await analyzeImageColors(preset.url,24);
+  const palette=await analyzeImageColors(preset.url,64);
   presetColorCache.set(preset.url,palette);
   return palette;
 }
 
-function analyzeImageColors(url,count=12){
+function analyzeImageColors(url,count=64){
   return new Promise((resolve,reject)=>{
     const image=new Image();
     image.crossOrigin='anonymous';
@@ -1026,13 +1028,20 @@ function analyzeImageColors(url,count=12){
         const bin=bins.get(key)||{r:0,g:0,b:0,count:0};
         bin.r+=r;bin.g+=g;bin.b+=b;bin.count++;bins.set(key,bin);
       }
+      const sampledTotal=[...bins.values()].reduce((sum,bin)=>sum+bin.count,0)||1;
       const colors=[...bins.values()].map(bin=>{
         const r=Math.round(bin.r/bin.count),g=Math.round(bin.g/bin.count),b=Math.round(bin.b/bin.count),hsl=rgbToHslObj(r,g,b);
-        return{r,g,b,...hsl,count:bin.count,score:bin.count*(1+Math.min(hsl.s,90)/100*.28),hex:rgbToHex(r,g,b)};
+        return{
+          r,g,b,...hsl,
+          count:bin.count,
+          share:bin.count/sampledTotal,
+          score:bin.count*(1+Math.min(hsl.s,90)/100*.28),
+          hex:rgbToHex(r,g,b)
+        };
       }).sort((a,b)=>b.score-a.score);
       const distinct=[];
       for(const color of colors){
-        if(distinct.every(existing=>rgbDistanceSquared(existing,color)>350))distinct.push(color);
+        if(distinct.every(existing=>rgbDistanceSquared(existing,color)>180))distinct.push(color);
         if(distinct.length>=count)break;
       }
       resolve(distinct);
@@ -1047,17 +1056,9 @@ function colorSimilarity(a,b){
   const labB=rgbToLab(b.r,b.g,b.b);
   const deltaE=deltaE2000(labA,labB);
 
-  /*
-    Escala operacional:
-    ΔE 0  = 100%
-    ΔE 10 = 95%
-    ΔE 20 = 90%
-
-    O percentual é uma leitura de proximidade para o sistema Match,
-    enquanto o ΔE continua sendo exibido para auditoria técnica.
-  */
+  // Escala operacional: ΔE 12 corresponde a 95%.
   return{
-    similarity:Math.max(0,1-deltaE/200),
+    similarity:Math.max(0,1-deltaE/240),
     deltaE
   };
 }
@@ -1066,30 +1067,36 @@ function passesPerceptualRules(selected,candidate,deltaE){
   const selectedHsl=rgbToHsl(selected.r,selected.g,selected.b);
   const candidateHsl=rgbToHsl(candidate.r,candidate.g,candidate.b);
 
-  const selectedNeutral=selectedHsl[1]<18;
-  const candidateNeutral=candidateHsl[1]<24;
+  const selectedNeutral=selectedHsl[1]<20;
+  const candidateNeutral=candidateHsl[1]<28;
 
   const lightnessGap=Math.abs(selectedHsl[2]-candidateHsl[2]);
   const saturationGap=Math.abs(selectedHsl[1]-candidateHsl[1]);
   const hueGap=circularHueDistance(selectedHsl[0],candidateHsl[0]);
+  const share=candidate.share||0;
 
-  // Para neutros, o matiz é pouco confiável: prioriza luz, saturação e ΔE.
+  /*
+    Duas formas de validar:
+    1. Match muito próximo: ΔE <= 8, mesmo em áreas menores.
+    2. Match contextual: ΔE <= 12, desde que a cor tenha presença real.
+  */
+  const closeEnough=deltaE<=8&&share>=.0015;
+  const contextual=deltaE<=12&&share>=.004;
+
   if(selectedNeutral){
     return(
       candidateNeutral &&
-      lightnessGap<=15 &&
-      saturationGap<=18 &&
-      deltaE<=10
+      lightnessGap<=18 &&
+      saturationGap<=22 &&
+      (closeEnough||contextual)
     );
   }
 
-  // Para cores cromáticas, aceita pequenas variações reais de fotografia,
-  // iluminação, textura e compressão da imagem.
   return(
-    deltaE<=10 &&
-    hueGap<=20 &&
-    saturationGap<=30 &&
-    lightnessGap<=18
+    hueGap<=24 &&
+    saturationGap<=34 &&
+    lightnessGap<=20 &&
+    (closeEnough||contextual)
   );
 }
 
@@ -1097,7 +1104,7 @@ async function renderCurrentMatch(){
   if(!matchResults.length)return;
   const result=matchResults[matchIndex];
   matchCounter.textContent=`Imagem ${matchIndex+1} de ${matchResults.length}`;
-  matchScore.textContent=`${result.image.name} • Similaridade perceptual recalibrada: ${(result.similarity*100).toFixed(1)}% • ΔE ${result.deltaE.toFixed(2)} • Cor encontrada: ${result.matchedColor.hex}`;
+  matchScore.textContent=`${result.image.name} • Similaridade: ${(result.similarity*100).toFixed(1)}% • ΔE ${result.deltaE.toFixed(2)} • Presença aproximada: ${(result.share*100).toFixed(2)}% • Cor encontrada: ${result.matchedColor.hex}`;
   await drawMatchImage(result.image.url);
   renderMatchThumbs();
   renderMatchPalette(result.palette,result.matchedColor.hex);
